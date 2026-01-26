@@ -1,79 +1,18 @@
 import axios from 'axios';
 import { useUserStore } from '../store/user.store';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Базовый URL из переменных окружения
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:10000/api';
+
+console.log('🔧 API URL:', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 секунд таймаут
 });
-
-// Базовый интерфейс для всех ответов API
-interface BaseApiResponse {
-  success: boolean;
-  message?: string;
-  error?: string;
-}
-
-// Интерфейс для ответа авторизации
-interface AuthResponse extends BaseApiResponse {
-  token: string;
-  user: any;
-}
-
-// Интерфейс для ответа с пользователем
-interface UserProfileResponse extends BaseApiResponse {
-  user: any;
-}
-
-// Интерфейс для ответа со статистикой
-interface StatsResponse extends BaseApiResponse {
-  stats: any;
-}
-
-// Интерфейс для ответа с кейсами
-interface CasesResponse extends BaseApiResponse {
-  cases: any[];
-}
-
-// Интерфейс для ответа с инвентарем
-interface InventoryResponse extends BaseApiResponse {
-  items: any[];
-  total: number;
-}
-
-// Интерфейс для ежедневной награды
-interface DailyRewardResponse extends BaseApiResponse {
-  reward: number;
-  newBalance: number;
-  streak: number;
-  nextAvailable: string;
-}
-
-// Интерфейс для ответа на открытие кейса
-interface OpenCaseResponse extends BaseApiResponse {
-  item: any;
-  case: {
-    id: number;
-    name: string;
-    type: string;
-  };
-  newBalance: number;
-  message: string;
-}
-
-// Интерфейс для ответа с лотами рынка
-interface MarketListingsResponse extends BaseApiResponse {
-  listings: any[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
-}
 
 // Интерцептор для добавления токена
 api.interceptors.request.use((config) => {
@@ -86,15 +25,93 @@ api.interceptors.request.use((config) => {
 
 // Интерцептор для обработки ошибок
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    return response.data;
+  },
   (error) => {
+    console.error('API Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+      data: error.response?.data
+    });
+    
     if (error.response?.status === 401) {
       useUserStore.getState().logout();
+      // Можно добавить редирект на логин
     }
-    return Promise.reject(error.response?.data?.error || 'Network error');
+    
+    return Promise.reject(error.response?.data?.error || 'Ошибка сети');
   }
 );
 
+// Типы для ответов API
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  token: string;
+  user: any;
+}
+
+export interface UserProfileResponse {
+  success: boolean;
+  user: any;
+}
+
+export interface StatsResponse {
+  success: boolean;
+  stats: any;
+}
+
+export interface CasesResponse {
+  success: boolean;
+  cases: any[];
+}
+
+export interface InventoryResponse {
+  success: boolean;
+  items: any[];
+  total: number;
+}
+
+export interface DailyRewardResponse {
+  success: boolean;
+  reward: number;
+  newBalance: number;
+  streak: number;
+  nextAvailable: string;
+}
+
+export interface OpenCaseResponse {
+  success: boolean;
+  item: any;
+  case: {
+    id: number;
+    name: string;
+    type: string;
+  };
+  newBalance: number;
+  message: string;
+}
+
+export interface MarketListingsResponse {
+  success: boolean;
+  listings: any[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// API методы
 export const authAPI = {
   login: (telegramData: any): Promise<AuthResponse> => 
     api.post('/auth/login', telegramData),
@@ -113,10 +130,10 @@ export const userAPI = {
   claimDaily: (): Promise<DailyRewardResponse> => 
     api.post('/user/daily'),
   
-  getReferrals: (): Promise<BaseApiResponse> => 
+  getReferrals: (): Promise<ApiResponse> => 
     api.get('/user/referrals'),
   
-  getTransactions: (params?: any): Promise<BaseApiResponse> => 
+  getTransactions: (params?: any): Promise<ApiResponse> => 
     api.get('/user/transactions', { params }),
 };
 
@@ -124,13 +141,13 @@ export const caseAPI = {
   getCases: (): Promise<CasesResponse> => 
     api.get('/cases'),
   
-  getCaseDrops: (caseId: number): Promise<BaseApiResponse> => 
+  getCaseDrops: (caseId: number): Promise<ApiResponse> => 
     api.get(`/cases/${caseId}/drops`),
   
   openCase: (caseId: number): Promise<OpenCaseResponse> => 
     api.post('/cases/open', { caseId }),
   
-  getCaseHistory: (): Promise<BaseApiResponse> => 
+  getCaseHistory: (): Promise<ApiResponse> => 
     api.get('/cases/history'),
 };
 
@@ -138,13 +155,13 @@ export const inventoryAPI = {
   getInventory: (params?: any): Promise<InventoryResponse> => 
     api.get('/inventory', { params }),
   
-  combineSkin: (skinId: number): Promise<BaseApiResponse> => 
+  combineSkin: (skinId: number): Promise<ApiResponse> => 
     api.post('/inventory/combine', { skinId }),
   
-  sellItem: (itemId: number, price: number): Promise<BaseApiResponse> => 
+  sellItem: (itemId: number, price: number): Promise<ApiResponse> => 
     api.post('/inventory/sell', { itemId, price }),
   
-  cancelSale: (listingId: number): Promise<BaseApiResponse> => 
+  cancelSale: (listingId: number): Promise<ApiResponse> => 
     api.post('/inventory/cancel-sale', { listingId }),
 };
 
@@ -152,10 +169,10 @@ export const marketAPI = {
   getListings: (params?: any): Promise<MarketListingsResponse> => 
     api.get('/market', { params }),
   
-  buyItem: (listingId: number): Promise<BaseApiResponse> => 
+  buyItem: (listingId: number): Promise<ApiResponse> => 
     api.post('/market/buy', { listingId }),
   
-  getMarketHistory: (params?: any): Promise<BaseApiResponse> => 
+  getMarketHistory: (params?: any): Promise<ApiResponse> => 
     api.get('/market/history', { params }),
 };
 
