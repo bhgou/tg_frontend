@@ -19,9 +19,32 @@ export const initTelegram = async () => {
       
       tg.ready();
       tg.expand();
+      tg.enableClosingConfirmation();
       
-      // Получаем данные пользователя из Telegram
-      const initData = tg.initData;
+      // Показываем главную кнопку
+      if (tg.MainButton) {
+        tg.MainButton.show();
+        tg.MainButton.setText('Открыть меню');
+        tg.MainButton.onClick(() => {
+          tg.showPopup({
+            title: 'Меню',
+            message: 'Выберите действие',
+            buttons: [
+              { id: 'profile', text: '👤 Профиль', type: 'default' },
+              { id: 'inventory', text: '🎒 Инвентарь', type: 'default' },
+              { type: 'cancel' }
+            ]
+          }, (buttonId: string) => {
+            if (buttonId === 'profile') {
+              window.location.href = '/profile';
+            } else if (buttonId === 'inventory') {
+              window.location.href = '/inventory';
+            }
+          });
+        });
+      }
+      
+      // Получаем данные пользователя
       const user = tg.initDataUnsafe?.user;
       
       if (user) {
@@ -33,7 +56,7 @@ export const initTelegram = async () => {
           firstName: user.first_name,
           lastName: user.last_name,
           photoUrl: user.photo_url,
-          initData: initData // Для проверки на сервере
+          startParam: tg.initDataUnsafe?.start_param // Для рефералов
         };
         
         try {
@@ -42,10 +65,19 @@ export const initTelegram = async () => {
             useUserStore.getState().setUser(response.user);
             useUserStore.getState().setToken(response.token);
             console.log('✅ Авторизация через Telegram успешна');
+            
+            // Отправляем данные в бот
+            if (tg.sendData) {
+              tg.sendData(JSON.stringify({
+                type: 'user_connected',
+                userId: response.user.id
+              }));
+            }
+            
             return response.user;
           }
         } catch (error) {
-          console.error('Ошибка авторизации через Telegram:', error);
+          console.error('Ошибка авторизации:', error);
           return createFallbackUser();
         }
       }
@@ -110,11 +142,13 @@ export const useTelegram = () => {
     }
   };
   
+  const isTelegram = () => !!tg;
+  
   return {
     tg,
     showAlert,
     closeApp,
     sendData,
-    isTelegram: !!tg
+    isTelegram: isTelegram()
   };
 };
