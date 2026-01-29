@@ -19,17 +19,8 @@ function App() {
     const initApp = async () => {
       try {
         console.log('🚀 Инициализация приложения...');
-        
-        // Проверяем подключение к API
-        const apiCheck = await checkApiConnection();
-        if (apiCheck.success) {
-          setApiStatus('connected');
-          console.log('✅ Подключение к API успешно');
-        } else {
-          setApiStatus('error');
-          console.warn('⚠️  API недоступен, работаем в офлайн режиме');
-        }
-        
+         setApiStatus('connected');
+
         // Инициализируем пользователя
         await initTelegram();
         console.log('✅ Приложение инициализировано');
