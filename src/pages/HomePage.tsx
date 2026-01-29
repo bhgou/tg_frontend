@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  CreditCard, Gamepad2, Award, 
+  TrendingUp, Gift, Users 
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { BalanceCard } from '../components/ui/BalanceCard';
 import { DailyReward } from '../components/DailyReward';
-import { QuickActions } from '../components/QuickActions';
 import { CasesGrid } from '../components/cases/CasesGrid';
+import { Card } from '../components/ui/Card';
 import { useUserStore } from '../store/user.store';
 import { useCaseStore } from '../store/case.store';
-import { caseAPI, userAPI } from '../services/api';
+import { caseAPI, userAPI, paymentAPI, gameAPI } from '../services/api';
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, balance, updateBalance } = useUserStore();
-  const { cases, setCases, setSelectedCase } = useCaseStore();
-  const [loading, setLoading] = useState(true);
+  const { user, balance, premiumBalance, updateBalance } = useUserStore();
+  const { cases, setCases } = useCaseStore();
+  const [premiumPackages, setPremiumPackages] = useState<any[]>([]);
+  const [games, setGames] = useState<any[]>([]);
 
   useEffect(() => {
     loadData();
@@ -21,137 +26,200 @@ export const HomePage: React.FC = () => {
 
   const loadData = async () => {
     try {
-      setLoading(true);
-      const [casesResponse, userResponse] = await Promise.all([
+      const [casesResponse, packagesResponse, gamesResponse] = await Promise.all([
         caseAPI.getCases(),
-        userAPI.getProfile()
+        paymentAPI.getPackages(),
+        gameAPI.getGames()
       ]);
       
       if (casesResponse.success) {
         setCases(casesResponse.cases || []);
       }
       
-      if (userResponse.success && userResponse.user) {
-        updateBalance(userResponse.user.balance || 0);
+      if (packagesResponse.success) {
+        setPremiumPackages(packagesResponse.packages || []);
+      }
+      
+      if (gamesResponse.success) {
+        setGames(gamesResponse.games || []);
       }
     } catch (error) {
       console.error('Failed to load data:', error);
-      // Тестовые данные при ошибке
-      setCases([
-        { 
-          id: 1, 
-          name: 'Бесплатный кейс', 
-          type: 'ad', 
-          price: null, 
-          imageUrl: null,
-          description: 'Открывается после просмотра рекламы' 
-        },
-        { 
-          id: 2, 
-          name: 'Стандартный кейс', 
-          type: 'standard', 
-          price: 500, 
-          imageUrl: null,
-          description: 'Обычные и редкие скины' 
-        },
-        { 
-          id: 3, 
-          name: 'Премиум кейс', 
-          type: 'premium', 
-          price: 1500, 
-          imageUrl: null,
-          description: 'Редкие и легендарные скины' 
-        },
-      ]);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleAdWatch = async () => {
-    try {
-      alert('🎬 Реклама запущена...\n\nПосле просмотра вы получите награду!');
-      // Здесь должна быть логика просмотра рекламы
-      // После успешного просмотра:
-      // const reward = await api.post('/rewards/watch-ad');
-      // updateBalance(reward.newBalance);
-    } catch (error) {
-      console.error('Ad watch error:', error);
-    }
+  const handleBuyPremium = (packageId: number) => {
+    navigate(`/payment/${packageId}`);
   };
 
-  const handleCaseSelect = (caseItem: any) => {
-    setSelectedCase(caseItem);
-    if (caseItem.type === 'ad') {
-      handleAdWatch();
-    } else {
-      // Для платных кейсов переходим на страницу кейса
-      navigate(`/cases/${caseItem.id}`);
-    }
+  const handlePlayGame = (gameType: string) => {
+    navigate(`/games/${gameType}`);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white p-4 pb-20">
-      {/* Header with balance */}
+      {/* Балансы */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <BalanceCard 
+          balance={balance} 
+          title="Основной баланс"
+          currency="CR"
+          icon="💰"
+        />
+        <BalanceCard 
+          balance={premiumBalance} 
+          title="Премиум баланс"
+          currency="GC"
+          icon="💎"
+          color="purple"
+        />
+      </div>
+
+      {/* Быстрые действия */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <Button 
+          variant="glass"
+          className="h-20 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-blue-600 to-cyan-500"
+          onClick={() => navigate('/payment')}
+        >
+          <CreditCard className="w-6 h-6" />
+          <span>Пополнить</span>
+        </Button>
+        
+        <Button 
+          variant="glass"
+          className="h-20 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-purple-600 to-pink-500"
+          onClick={() => navigate('/games')}
+        >
+          <Gamepad2 className="w-6 h-6" />
+          <span>Игры</span>
+        </Button>
+        
+        <Button 
+          variant="glass"
+          className="h-20 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-green-600 to-emerald-500"
+          onClick={() => navigate('/sponsors')}
+        >
+          <Award className="w-6 h-6" />
+          <span>Спонсоры</span>
+        </Button>
+        
+        <Button 
+          variant="glass"
+          className="h-20 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-yellow-600 to-orange-500"
+          onClick={() => navigate('/referrals')}
+        >
+          <Users className="w-6 h-6" />
+          <span>Рефералы</span>
+        </Button>
+      </div>
+
+      {/* Ежедневная награда */}
+      <DailyReward />
+
+      {/* Популярные игры */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-              Skin Factory
-            </h1>
-            <p className="text-gray-400">Добро пожаловать, {user?.username || 'Игрок'}!</p>
-          </div>
-          <BalanceCard balance={balance} />
+          <h2 className="text-xl font-bold">Быстрые игры</h2>
+          <Button size="sm" onClick={() => navigate('/games')}>
+            Все игры
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-3">
+          {games.slice(0, 4).map((game) => (
+            <Card 
+              key={game.id}
+              hoverable
+              className="p-4 text-center"
+              onClick={() => handlePlayGame(game.type)}
+            >
+              <Gamepad2 className="w-8 h-8 mx-auto mb-2 text-purple-400" />
+              <h3 className="font-bold">{game.name}</h3>
+              <p className="text-sm text-gray-400">Множитель: {game.win_multiplier}x</p>
+              <div className="text-xs text-gray-500 mt-2">
+                Ставка: {game.min_bet}-{game.max_bet} GC
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
 
-      {/* Daily reward */}
-      <DailyReward />
-
-      {/* Quick actions */}
-      <QuickActions onWatchAd={handleAdWatch} />
-
-      {/* Available cases */}
-      <div className="mt-8">
+      {/* Кейсы */}
+      <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Доступные кейсы</h2>
-          <Button 
-            variant="secondary" 
-            size="sm"
-            onClick={() => navigate('/cases')}
-          >
+          <h2 className="text-xl font-bold">Кейсы</h2>
+          <Button size="sm" onClick={() => navigate('/cases')}>
             Все кейсы
           </Button>
         </div>
         
-        {loading ? (
-          <div className="grid grid-cols-2 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-48 rounded-2xl bg-gray-800/50 animate-pulse" />
-            ))}
-          </div>
-        ) : (
-          <CasesGrid cases={cases} onSelectCase={handleCaseSelect} />
-        )}
+        <CasesGrid 
+          cases={cases.slice(0, 4)} 
+          onSelectCase={(caseItem) => navigate(`/cases/${caseItem.id}`)}
+        />
       </div>
 
-      {/* Stats */}
-      <div className="mt-8 backdrop-blur-lg bg-white/10 border border-white/20 rounded-2xl p-4">
-        <div className="grid grid-cols-3 gap-4 text-center">
+      {/* Пакеты премиум валюты */}
+      <div className="mb-6">
+        <h2 className="text-xl font-bold mb-4">Пополнение баланса</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {premiumPackages.map((pkg) => (
+            <Card 
+              key={pkg.id}
+              className={`p-6 ${pkg.popular ? 'border-2 border-yellow-500' : ''}`}
+            >
+              {pkg.popular && (
+                <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                  <span className="bg-yellow-500 text-black text-xs font-bold px-3 py-1 rounded-full">
+                    ПОПУЛЯРНО
+                  </span>
+                </div>
+              )}
+              
+              <div className="text-center mb-4">
+                <div className="text-3xl font-bold text-blue-400">{pkg.premium + pkg.bonus} GC</div>
+                <div className="text-lg font-bold">{pkg.rub} ₽</div>
+                {pkg.bonus > 0 && (
+                  <div className="text-sm text-green-400 mt-1">
+                    +{pkg.bonus} GC бонус!
+                  </div>
+                )}
+              </div>
+              
+              <Button 
+                variant={pkg.popular ? 'primary' : 'glass'}
+                fullWidth
+                onClick={() => handleBuyPremium(pkg.id)}
+              >
+                Купить
+              </Button>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Статистика */}
+      <Card className="p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
           <div>
             <div className="text-2xl font-bold text-cyan-400">0</div>
             <div className="text-sm text-gray-400">Открыто кейсов</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-green-400">0</div>
-            <div className="text-sm text-gray-400">Собрано скинов</div>
+            <div className="text-sm text-gray-400">Выиграно в играх</div>
           </div>
           <div>
             <div className="text-2xl font-bold text-purple-400">0</div>
+            <div className="text-sm text-gray-400">Получено наград</div>
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-yellow-400">0</div>
             <div className="text-sm text-gray-400">Приглашено друзей</div>
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 };

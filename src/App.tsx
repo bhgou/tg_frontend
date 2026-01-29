@@ -9,6 +9,15 @@ import { ProfilePage } from './pages/ProfilePage';
 import { initTelegram } from './services/telegram';
 import { useUserStore } from './store/user.store';
 import { checkApiConnection } from './services/api';
+import AdminPage from './pages/AdminPage';
+import PaymentPage from './pages/PaymentPage';
+import GamesPage from './pages/GamesPage';
+import CaseDetailPage from './pages/CaseDetailPage';
+import SponsorsPage from './pages/SponsorsPage';
+import WithdrawalPage from './pages/WithdrawalPage';
+import RealSkinsPage from './pages/RealSkinsPage';
+
+// В роутах добавьте:
 
 function App() {
   const { isAuthenticated } = useUserStore();
@@ -79,11 +88,20 @@ function App() {
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
       <div className="pb-16">
         <Routes>
-          <Route path="/" element={<HomePage />} />
+<Route path="/" element={<HomePage />} />
           <Route path="/cases" element={<CasesPage />} />
+          <Route path="/cases/:id" element={<CaseDetailPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/market" element={<MarketPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/payment/:packageId" element={<PaymentPage />} />
+          <Route path="/games" element={<GamesPage />} />
+          <Route path="/games/:gameType" element={<GamesPage />} />
+          <Route path="/sponsors" element={<SponsorsPage />} />
+          <Route path="/withdraw" element={<WithdrawalPage />} />
+          <Route path="/real-skins" element={<RealSkinsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

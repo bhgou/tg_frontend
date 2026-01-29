@@ -9,14 +9,18 @@ interface User {
   lastName: string | null;
   avatarUrl: string | null;
   balance: number;
+  premiumBalance: number; // Добавили
   totalEarned: number;
+  totalSpentRub: number; // Добавили
   dailyStreak: number;
   referralCode: string;
+  isAdmin: boolean; // Добавили
 }
 
 interface UserStore {
   user: User | null;
   balance: number;
+  premiumBalance: number; // Добавили
   token: string | null;
   isAuthenticated: boolean;
   fragments: number;
@@ -24,7 +28,9 @@ interface UserStore {
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   updateBalance: (newBalance: number) => void;
+  updatePremiumBalance: (newPremiumBalance: number) => void; // Добавили
   addBalance: (amount: number) => void;
+  addPremiumBalance: (amount: number) => void; // Добавили
   updateFragments: (fragments: number) => void;
   addFragments: (amount: number) => void;
   logout: () => void;
@@ -35,6 +41,7 @@ export const useUserStore = create<UserStore>()(
     (set) => ({
       user: null,
       balance: 0,
+      premiumBalance: 0,
       token: null,
       isAuthenticated: false,
       fragments: 0,
@@ -42,6 +49,7 @@ export const useUserStore = create<UserStore>()(
       setUser: (user) => set({ 
         user, 
         balance: user?.balance || 0,
+        premiumBalance: user?.premiumBalance || 0,
         isAuthenticated: !!user 
       }),
       
@@ -49,8 +57,14 @@ export const useUserStore = create<UserStore>()(
       
       updateBalance: (newBalance) => set({ balance: newBalance }),
       
+      updatePremiumBalance: (newPremiumBalance) => set({ premiumBalance: newPremiumBalance }),
+      
       addBalance: (amount) => set((state) => ({ 
         balance: state.balance + amount 
+      })),
+      
+      addPremiumBalance: (amount) => set((state) => ({ 
+        premiumBalance: state.premiumBalance + amount 
       })),
       
       updateFragments: (fragments) => set({ fragments }),
@@ -63,6 +77,7 @@ export const useUserStore = create<UserStore>()(
         user: null, 
         token: null, 
         balance: 0, 
+        premiumBalance: 0,
         fragments: 0,
         isAuthenticated: false 
       }),

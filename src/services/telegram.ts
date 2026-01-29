@@ -136,6 +136,7 @@ export const initTelegram = async () => {
   return createFallbackUser();
 };
 
+// В функции createFallbackUser исправьте:
 const createFallbackUser = () => {
   console.log('💻 Режим тестирования в браузере');
   
@@ -147,9 +148,12 @@ const createFallbackUser = () => {
     lastName: 'Пользователь',
     avatarUrl: null,
     balance: 5000,
+    premiumBalance: 1000, // Добавили
     totalEarned: 10000,
+    totalSpentRub: 0, // Добавили
     dailyStreak: 5,
     referralCode: 'test123',
+    isAdmin: false, // Добавили
     createdAt: new Date().toISOString()
   };
   
