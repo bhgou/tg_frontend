@@ -1,10 +1,40 @@
 import { useUserStore } from '../store/user.store';
 import { authAPI } from './api';
 
+// Полный интерфейс для Telegram WebApp
+interface TelegramWebApp {
+  ready: () => void;
+  expand: () => void;
+  enableClosingConfirmation: () => void;
+  MainButton?: {
+    show: () => void;
+    hide: () => void;
+    setText: (text: string) => void;
+    onClick: (callback: () => void) => void;
+  };
+  showPopup?: (params: any, callback?: (buttonId: string) => void) => void;
+  sendData?: (data: string) => void;
+  close?: () => void;
+  showAlert?: (message: string, callback?: () => void) => void;
+  initDataUnsafe?: {
+    user?: {
+      id: number;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+      photo_url?: string;
+    };
+    start_param?: string;
+  };
+  colorScheme?: 'light' | 'dark';
+  platform?: string;
+  version?: string;
+}
+
 declare global {
   interface Window {
     Telegram?: {
-      WebApp: any;
+      WebApp: TelegramWebApp;
     };
   }
 }
@@ -17,30 +47,45 @@ export const initTelegram = async () => {
     try {
       console.log('📱 Режим Telegram Mini App');
       
+      if (tg.platform) {
+        console.log('Platform:', tg.platform);
+      }
+      if (tg.version) {
+        console.log('Version:', tg.version);
+      }
+      if (tg.colorScheme) {
+        console.log('Theme:', tg.colorScheme);
+      }
+      
       tg.ready();
       tg.expand();
-      tg.enableClosingConfirmation();
+      
+      if (tg.enableClosingConfirmation) {
+        tg.enableClosingConfirmation();
+      }
       
       // Показываем главную кнопку
       if (tg.MainButton) {
         tg.MainButton.show();
         tg.MainButton.setText('Открыть меню');
         tg.MainButton.onClick(() => {
-          tg.showPopup({
-            title: 'Меню',
-            message: 'Выберите действие',
-            buttons: [
-              { id: 'profile', text: '👤 Профиль', type: 'default' },
-              { id: 'inventory', text: '🎒 Инвентарь', type: 'default' },
-              { type: 'cancel' }
-            ]
-          }, (buttonId: string) => {
-            if (buttonId === 'profile') {
-              window.location.href = '/profile';
-            } else if (buttonId === 'inventory') {
-              window.location.href = '/inventory';
-            }
-          });
+          if (tg.showPopup) {
+            tg.showPopup({
+              title: 'Меню',
+              message: 'Выберите действие',
+              buttons: [
+                { id: 'profile', text: '👤 Профиль', type: 'default' },
+                { id: 'inventory', text: '🎒 Инвентарь', type: 'default' },
+                { type: 'cancel' }
+              ]
+            }, (buttonId: string) => {
+              if (buttonId === 'profile') {
+                window.location.href = '/profile';
+              } else if (buttonId === 'inventory') {
+                window.location.href = '/inventory';
+              }
+            });
+          }
         });
       }
       
@@ -56,7 +101,7 @@ export const initTelegram = async () => {
           firstName: user.first_name,
           lastName: user.last_name,
           photoUrl: user.photo_url,
-          startParam: tg.initDataUnsafe?.start_param // Для рефералов
+          startParam: tg.initDataUnsafe?.start_param
         };
         
         try {

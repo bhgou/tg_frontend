@@ -19,11 +19,14 @@ interface UserStore {
   balance: number;
   token: string | null;
   isAuthenticated: boolean;
+  fragments: number;
   
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   updateBalance: (newBalance: number) => void;
   addBalance: (amount: number) => void;
+  updateFragments: (fragments: number) => void;
+  addFragments: (amount: number) => void;
   logout: () => void;
 }
 
@@ -34,6 +37,7 @@ export const useUserStore = create<UserStore>()(
       balance: 0,
       token: null,
       isAuthenticated: false,
+      fragments: 0,
 
       setUser: (user) => set({ 
         user, 
@@ -49,15 +53,22 @@ export const useUserStore = create<UserStore>()(
         balance: state.balance + amount 
       })),
       
+      updateFragments: (fragments) => set({ fragments }),
+      
+      addFragments: (amount) => set((state) => ({ 
+        fragments: state.fragments + amount 
+      })),
+      
       logout: () => set({ 
         user: null, 
         token: null, 
         balance: 0, 
+        fragments: 0,
         isAuthenticated: false 
       }),
     }),
     {
-      name: 'user-storage',
+      name: 'skin-factory-storage',
     }
   )
 );

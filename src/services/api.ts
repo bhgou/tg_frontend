@@ -1,49 +1,15 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { useUserStore } from '../store/user.store';
 
-// Базовый URL из переменных окружения
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:10000/api';
-
-console.log('🔧 API URL:', API_URL);
+const API_URL = process.env.VITE_API_URL || 'http://localhost:3001/api';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000, // 10 секунд таймаут
+  timeout: 15000,
 });
-
-// Интерцептор для добавления токена
-api.interceptors.request.use((config) => {
-  const token = useUserStore.getState().token;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Интерцептор для обработки ошибок
-api.interceptors.response.use(
-  (response) => {
-    return response.data;
-  },
-  (error) => {
-    console.error('API Error:', {
-      url: error.config?.url,
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data
-    });
-    
-    if (error.response?.status === 401) {
-      useUserStore.getState().logout();
-      // Можно добавить редирект на логин
-    }
-    
-    return Promise.reject(error.response?.data?.error || 'Ошибка сети');
-  }
-);
 
 // Типы для ответов API
 export interface ApiResponse<T = any> {
@@ -51,22 +17,18 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }
 
 export interface AuthResponse {
   success: boolean;
   token: string;
   user: any;
-}
-
-export interface UserProfileResponse {
-  success: boolean;
-  user: any;
-}
-
-export interface StatsResponse {
-  success: boolean;
-  stats: any;
 }
 
 export interface CasesResponse {
@@ -111,20 +73,48 @@ export interface MarketListingsResponse {
   };
 }
 
-// API методы
+// Интерцептор для добавления токена
+api.interceptors.request.use((config) => {
+  const token = useUserStore.getState().token;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Интерцептор для обработки ответов
+api.interceptors.response.use(
+  (response: AxiosResponse) => {
+    // Axios автоматически возвращает response.data
+    // Нам нужно убедиться, что это наш формат ApiResponse
+    return response.data;
+  },
+  (error) => {
+    console.error('API Error:', error.response?.data || error.message);
+    
+    if (error.response?.status === 401) {
+      useUserStore.getState().logout();
+    }
+    
+    return Promise.reject(error.response?.data?.error || 'Ошибка сети');
+  }
+);
+
+// API для аутентификации
 export const authAPI = {
-  login: (telegramData: any): Promise<AuthResponse> => 
-    api.post('/auth/login', telegramData),
+  login: (data: any): Promise<AuthResponse> => 
+    api.post('/auth/login', data),
   
   verify: (token: string): Promise<AuthResponse> => 
     api.post('/auth/verify', { token }),
 };
 
+// API для пользователя
 export const userAPI = {
-  getProfile: (): Promise<UserProfileResponse> => 
+  getProfile: (): Promise<ApiResponse> => 
     api.get('/user/profile'),
   
-  getStats: (): Promise<StatsResponse> => 
+  getStats: (): Promise<ApiResponse> => 
     api.get('/user/stats'),
   
   claimDaily: (): Promise<DailyRewardResponse> => 
@@ -137,6 +127,7 @@ export const userAPI = {
     api.get('/user/transactions', { params }),
 };
 
+// API для кейсов
 export const caseAPI = {
   getCases: (): Promise<CasesResponse> => 
     api.get('/cases'),
@@ -151,6 +142,7 @@ export const caseAPI = {
     api.get('/cases/history'),
 };
 
+// API для инвентаря
 export const inventoryAPI = {
   getInventory: (params?: any): Promise<InventoryResponse> => 
     api.get('/inventory', { params }),
@@ -165,6 +157,7 @@ export const inventoryAPI = {
     api.post('/inventory/cancel-sale', { listingId }),
 };
 
+// API для рынка
 export const marketAPI = {
   getListings: (params?: any): Promise<MarketListingsResponse> => 
     api.get('/market', { params }),
@@ -174,6 +167,39 @@ export const marketAPI = {
   
   getMarketHistory: (params?: any): Promise<ApiResponse> => 
     api.get('/market/history', { params }),
+};
+
+// API для каналов
+export const channelsAPI = {
+  getChannels: (): Promise<ApiResponse> => 
+    api.get('/channels'),
+  
+  checkSubscriptions: (data: any): Promise<ApiResponse> => 
+    api.post('/channels/check-subscriptions', data),
+  
+  claimReward: (channelId: number): Promise<ApiResponse> => 
+    api.post('/channels/claim-reward', { channelId }),
+  
+  getChannelsStats: (): Promise<ApiResponse> => 
+    api.get('/channels/stats'),
+};
+
+// API для реальных скинов
+export const realSkinsAPI = {
+  getRealSkins: (params?: any): Promise<ApiResponse> => 
+    api.get('/real-skins', { params }),
+  
+  getRealSkin: (id: number): Promise<ApiResponse> => 
+    api.get(`/real-skins/${id}`),
+  
+  withdrawSkin: (data: { skinId: number; steamTradeLink: string }): Promise<ApiResponse> => 
+    api.post('/real-skins/withdraw', data),
+  
+  getWithdrawalsHistory: (): Promise<ApiResponse> => 
+    api.get('/real-skins/withdrawals/history'),
+  
+  getFragmentsProgress: (): Promise<ApiResponse> => 
+    api.get('/real-skins/fragments/progress'),
 };
 
 export default api;
