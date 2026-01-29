@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Grid, List, Filter } from 'lucide-react';
+import { ArrowLeft, Grid, List } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { inventoryAPI } from '../services/api';
+import { inventoryAPI, InventoryResponse } from '../services/api';
 
 export const InventoryPage: React.FC = () => {
   const navigate = useNavigate();
@@ -17,24 +17,62 @@ export const InventoryPage: React.FC = () => {
 
   const loadInventory = async () => {
     try {
-      const response = await inventoryAPI.getInventory({
+      const response: InventoryResponse = await inventoryAPI.getInventory({
         type: filter === 'all' ? undefined : filter
       });
       setItems(response.items || []);
     } catch (error) {
       console.error('Failed to load inventory:', error);
+      // Тестовые данные
+      setItems([
+        {
+          id: 1,
+          name: 'AK-47 | Redline',
+          rarity: 'classified',
+          is_fragment: false,
+          fragments: 1,
+          price: 45.50
+        },
+        {
+          id: 2,
+          name: 'Glock-18 | Water Elemental',
+          rarity: 'mil-spec',
+          is_fragment: false,
+          fragments: 1,
+          price: 5.50
+        },
+        {
+          id: 3,
+          name: 'Фрагменты M4A1-S',
+          rarity: 'common',
+          is_fragment: true,
+          fragments: 8,
+          price: 0
+        },
+        {
+          id: 4,
+          name: 'AWP | Asiimov',
+          rarity: 'covert',
+          is_fragment: false,
+          fragments: 1,
+          price: 120.00
+        },
+      ]);
     }
   };
 
   const getRarityColor = (rarity: string) => {
     const rarityMap: Record<string, string> = {
-      'common': 'border-csgo-rarity-common text-csgo-rarity-common',
-      'uncommon': 'border-csgo-rarity-uncommon text-csgo-rarity-uncommon',
-      'rare': 'border-csgo-rarity-rare text-csgo-rarity-rare',
-      'mythical': 'border-csgo-rarity-mythical text-csgo-rarity-mythical',
-      'legendary': 'border-csgo-rarity-legendary text-csgo-rarity-legendary',
-      'ancient': 'border-csgo-rarity-ancient text-csgo-rarity-ancient',
-      'immortal': 'border-csgo-rarity-immortal text-csgo-rarity-immortal',
+      'common': 'border-gray-400 text-gray-400',
+      'uncommon': 'border-blue-400 text-blue-400',
+      'rare': 'border-purple-400 text-purple-400',
+      'mythical': 'border-pink-400 text-pink-400',
+      'legendary': 'border-yellow-400 text-yellow-400',
+      'ancient': 'border-orange-400 text-orange-400',
+      'immortal': 'border-red-400 text-red-400',
+      'classified': 'border-green-400 text-green-400',
+      'covert': 'border-red-500 text-red-500',
+      'contraband': 'border-yellow-500 text-yellow-500',
     };
     return rarityMap[rarity.toLowerCase()] || 'border-gray-500 text-gray-400';
   };
@@ -87,24 +125,35 @@ export const InventoryPage: React.FC = () => {
       {/* Inventory items */}
       {viewMode === 'grid' ? (
         <div className="grid grid-cols-2 gap-4">
-          {items.map((item: any, index: number) => (
+          {items.map((item: any) => (
             <div
               key={item.id}
               className="transition-transform hover:scale-105"
             >
               <Card hoverable className="p-3">
                 <div className={`border-2 rounded-lg p-2 mb-2 ${getRarityColor(item.rarity)}`}>
-                  <div className="aspect-square bg-gray-800 rounded" />
+                  <div className="aspect-square bg-gradient-to-br from-gray-800 to-gray-900 rounded flex items-center justify-center">
+                    {item.is_fragment ? (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{item.fragments}</div>
+                        <div className="text-xs">фрагментов</div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full bg-gray-700 rounded" />
+                    )}
+                  </div>
                 </div>
                 <h3 className="font-bold text-sm truncate">{item.name}</h3>
                 <div className="flex justify-between items-center mt-2">
                   <span className={`text-xs font-bold ${getRarityColor(item.rarity)}`}>
                     {item.rarity.toUpperCase()}
                   </span>
-                  {item.price && (
+                  {item.price ? (
                     <span className="text-yellow-400 text-sm font-bold">
                       {item.price} CR
                     </span>
+                  ) : (
+                    <span className="text-gray-400 text-xs">бесплатно</span>
                   )}
                 </div>
               </Card>
@@ -113,14 +162,20 @@ export const InventoryPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {items.map((item: any, index: number) => (
+          {items.map((item: any) => (
             <div
               key={item.id}
               className="transition-transform hover:scale-[1.02]"
             >
               <Card hoverable className="flex items-center gap-3 p-3">
                 <div className={`w-16 h-16 border-2 rounded-lg p-1 ${getRarityColor(item.rarity)}`}>
-                  <div className="w-full h-full bg-gray-800 rounded" />
+                  <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 rounded flex items-center justify-center">
+                    {item.is_fragment && (
+                      <div className="text-center">
+                        <div className="text-lg font-bold">{item.fragments}</div>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex-1">
                   <h3 className="font-bold">{item.name}</h3>
@@ -135,13 +190,15 @@ export const InventoryPage: React.FC = () => {
                     )}
                   </div>
                 </div>
-                {item.price && (
+                {item.price ? (
                   <div className="text-right">
                     <div className="text-yellow-400 font-bold">{item.price} CR</div>
                     <Button size="sm" className="mt-2">
                       Продать
                     </Button>
                   </div>
+                ) : (
+                  <Button size="sm">Объединить</Button>
                 )}
               </Card>
             </div>

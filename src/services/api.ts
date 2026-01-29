@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { useUserStore } from '../store/user.store';
 
 const API_URL = process.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -8,10 +8,10 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 10000,
 });
 
-// Типы для ответов API
+// Интерфейсы для ответов API
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -25,45 +25,36 @@ export interface ApiResponse<T = any> {
   };
 }
 
-export interface AuthResponse {
-  success: boolean;
+export interface AuthResponse extends ApiResponse {
   token: string;
   user: any;
 }
 
-export interface CasesResponse {
-  success: boolean;
+export interface UserProfileResponse extends ApiResponse {
+  user: any;
+}
+
+export interface UserStatsResponse extends ApiResponse {
+  stats: any;
+}
+
+export interface CasesResponse extends ApiResponse {
   cases: any[];
 }
 
-export interface InventoryResponse {
-  success: boolean;
-  items: any[];
-  total: number;
-}
-
-export interface DailyRewardResponse {
-  success: boolean;
+export interface DailyRewardResponse extends ApiResponse {
   reward: number;
   newBalance: number;
   streak: number;
   nextAvailable: string;
 }
 
-export interface OpenCaseResponse {
-  success: boolean;
-  item: any;
-  case: {
-    id: number;
-    name: string;
-    type: string;
-  };
-  newBalance: number;
-  message: string;
+export interface InventoryResponse extends ApiResponse {
+  items: any[];
+  total: number;
 }
 
-export interface MarketListingsResponse {
-  success: boolean;
+export interface MarketResponse extends ApiResponse {
   listings: any[];
   pagination: {
     page: number;
@@ -84,122 +75,100 @@ api.interceptors.request.use((config) => {
 
 // Интерцептор для обработки ответов
 api.interceptors.response.use(
-  (response: AxiosResponse) => {
-    // Axios автоматически возвращает response.data
-    // Нам нужно убедиться, что это наш формат ApiResponse
-    return response.data;
-  },
+  (response) => response.data,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    console.error('API Error:', {
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+    });
     
     if (error.response?.status === 401) {
       useUserStore.getState().logout();
     }
     
-    return Promise.reject(error.response?.data?.error || 'Ошибка сети');
+    return Promise.reject(error.response?.data || { error: 'Ошибка сети' });
   }
 );
+
+// Проверка подключения к API
+export const checkApiConnection = async () => {
+  try {
+    const response = await api.get('/');
+    return { success: true, data: response };
+  } catch (error) {
+    console.error('API connection error:', error);
+    return { success: false, error };
+  }
+};
 
 // API для аутентификации
 export const authAPI = {
   login: (data: any): Promise<AuthResponse> => 
-    api.post('/auth/login', data),
+    api.post('/auth/login', data) as Promise<AuthResponse>,
   
   verify: (token: string): Promise<AuthResponse> => 
-    api.post('/auth/verify', { token }),
+    api.post('/auth/verify', { token }) as Promise<AuthResponse>,
 };
 
 // API для пользователя
 export const userAPI = {
-  getProfile: (): Promise<ApiResponse> => 
-    api.get('/user/profile'),
+  getProfile: (): Promise<UserProfileResponse> => 
+    api.get('/user/profile') as Promise<UserProfileResponse>,
   
-  getStats: (): Promise<ApiResponse> => 
-    api.get('/user/stats'),
+  getStats: (): Promise<UserStatsResponse> => 
+    api.get('/user/stats') as Promise<UserStatsResponse>,
   
   claimDaily: (): Promise<DailyRewardResponse> => 
-    api.post('/user/daily'),
+    api.post('/user/daily') as Promise<DailyRewardResponse>,
   
   getReferrals: (): Promise<ApiResponse> => 
-    api.get('/user/referrals'),
+    api.get('/user/referrals') as Promise<ApiResponse>,
   
   getTransactions: (params?: any): Promise<ApiResponse> => 
-    api.get('/user/transactions', { params }),
+    api.get('/user/transactions', { params }) as Promise<ApiResponse>,
 };
 
 // API для кейсов
 export const caseAPI = {
   getCases: (): Promise<CasesResponse> => 
-    api.get('/cases'),
+    api.get('/cases') as Promise<CasesResponse>,
   
   getCaseDrops: (caseId: number): Promise<ApiResponse> => 
-    api.get(`/cases/${caseId}/drops`),
+    api.get(`/cases/${caseId}/drops`) as Promise<ApiResponse>,
   
-  openCase: (caseId: number): Promise<OpenCaseResponse> => 
-    api.post('/cases/open', { caseId }),
+  openCase: (caseId: number): Promise<ApiResponse> => 
+    api.post('/cases/open', { caseId }) as Promise<ApiResponse>,
   
   getCaseHistory: (): Promise<ApiResponse> => 
-    api.get('/cases/history'),
+    api.get('/cases/history') as Promise<ApiResponse>,
 };
 
 // API для инвентаря
 export const inventoryAPI = {
   getInventory: (params?: any): Promise<InventoryResponse> => 
-    api.get('/inventory', { params }),
+    api.get('/inventory', { params }) as Promise<InventoryResponse>,
   
   combineSkin: (skinId: number): Promise<ApiResponse> => 
-    api.post('/inventory/combine', { skinId }),
+    api.post('/inventory/combine', { skinId }) as Promise<ApiResponse>,
   
   sellItem: (itemId: number, price: number): Promise<ApiResponse> => 
-    api.post('/inventory/sell', { itemId, price }),
+    api.post('/inventory/sell', { itemId, price }) as Promise<ApiResponse>,
   
   cancelSale: (listingId: number): Promise<ApiResponse> => 
-    api.post('/inventory/cancel-sale', { listingId }),
+    api.post('/inventory/cancel-sale', { listingId }) as Promise<ApiResponse>,
 };
 
 // API для рынка
 export const marketAPI = {
-  getListings: (params?: any): Promise<MarketListingsResponse> => 
-    api.get('/market', { params }),
+  getListings: (params?: any): Promise<MarketResponse> => 
+    api.get('/market', { params }) as Promise<MarketResponse>,
   
   buyItem: (listingId: number): Promise<ApiResponse> => 
-    api.post('/market/buy', { listingId }),
+    api.post('/market/buy', { listingId }) as Promise<ApiResponse>,
   
   getMarketHistory: (params?: any): Promise<ApiResponse> => 
-    api.get('/market/history', { params }),
-};
-
-// API для каналов
-export const channelsAPI = {
-  getChannels: (): Promise<ApiResponse> => 
-    api.get('/channels'),
-  
-  checkSubscriptions: (data: any): Promise<ApiResponse> => 
-    api.post('/channels/check-subscriptions', data),
-  
-  claimReward: (channelId: number): Promise<ApiResponse> => 
-    api.post('/channels/claim-reward', { channelId }),
-  
-  getChannelsStats: (): Promise<ApiResponse> => 
-    api.get('/channels/stats'),
-};
-
-// API для реальных скинов
-export const realSkinsAPI = {
-  getRealSkins: (params?: any): Promise<ApiResponse> => 
-    api.get('/real-skins', { params }),
-  
-  getRealSkin: (id: number): Promise<ApiResponse> => 
-    api.get(`/real-skins/${id}`),
-  
-  withdrawSkin: (data: { skinId: number; steamTradeLink: string }): Promise<ApiResponse> => 
-    api.post('/real-skins/withdraw', data),
-  
-  getWithdrawalsHistory: (): Promise<ApiResponse> => 
-    api.get('/real-skins/withdrawals/history'),
-  
-  getFragmentsProgress: (): Promise<ApiResponse> => 
-    api.get('/real-skins/fragments/progress'),
+    api.get('/market/history', { params }) as Promise<ApiResponse>,
 };
 
 export default api;

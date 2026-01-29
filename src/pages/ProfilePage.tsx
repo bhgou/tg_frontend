@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
   User, 
@@ -14,39 +13,40 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { useUserStore } from '../store/user.store';
-import { userAPI } from '../services/api';
-import { useTelegram } from '../services/telegram';
+import { userAPI, UserStatsResponse } from '../services/api';
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useUserStore();
-  const { closeApp } = useTelegram();
   const [stats, setStats] = useState<any>({});
-  const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
     loadStats();
   }, []);
 
   const loadStats = async () => {
-  try {
-    const response = await userAPI.getStats();
-    // response.stats доступен благодаря типизации
-    setStats(response.stats || {});
-  } catch (error) {
-    console.error('Failed to load stats:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoadingStats(true);
+      const response: UserStatsResponse = await userAPI.getStats();
+      setStats(response.stats || {});
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+      // Тестовые данные
+      setStats({
+        totalCasesOpened: 42,
+        totalSkinsCollected: 15,
+        totalReferrals: 8,
+        tradeAccuracy: 65
+      });
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
-    if (closeApp) {
-      closeApp();
-    } else {
-      navigate('/');
-    }
+    navigate('/');
   };
 
   const menuItems = [
@@ -57,9 +57,9 @@ export const ProfilePage: React.FC = () => {
   ];
 
   const actions = [
-    { icon: <Share2 className="w-5 h-5" />, label: 'Пригласить друзей', onClick: () => {} },
-    { icon: <Settings className="w-5 h-5" />, label: 'Настройки', onClick: () => {} },
-    { icon: <LogOut className="w-5 h-5" />, label: 'Выйти', onClick: handleLogout, variant: 'danger' as const },
+    { icon: <Share2 className="w-5 h-5" />, label: 'Пригласить друзей', onClick: () => alert('Функция "Пригласить друзей" в разработке') },
+    { icon: <Settings className="w-5 h-5" />, label: 'Настройки', onClick: () => alert('Функция "Настройки" в разработке') },
+    { icon: <LogOut className="w-5 h-5" />, label: 'Выйти', onClick: handleLogout },
   ];
 
   return (
@@ -78,76 +78,67 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {/* User info */}
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="glass-effect rounded-2xl p-6 mb-6 text-center"
-      >
+      <div className="glass-effect rounded-2xl p-6 mb-6 text-center">
         <div className="w-24 h-24 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
           <User className="w-12 h-12 text-white" />
         </div>
         
         <h2 className="text-xl font-bold mb-1">
-          {user?.firstName} {user?.lastName}
+          {user?.firstName || 'Тест'} {user?.lastName || 'Пользователь'}
         </h2>
         <p className="text-gray-400 mb-4">@{user?.username || 'user'}</p>
         
         <div className="inline-block bg-blue-500/20 text-blue-400 px-4 py-1 rounded-full text-sm font-medium">
-          ID: {user?.telegramId?.slice(0, 8)}...
+          ID: {user?.telegramId?.slice(0, 8) || '12345678'}...
         </div>
-      </motion.div>
+      </div>
 
-      {/* Stats */}
+      {/* Stats cards */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         {menuItems.map((item, index) => (
-          <motion.div
-            key={index}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: index * 0.1 }}
-          >
-            <div className="glass-effect rounded-xl p-4">
-              <div className="flex items-center gap-3 mb-2">
-                {item.icon}
-                <span className="text-sm text-gray-400">{item.label}</span>
-              </div>
-              <div className={`text-lg font-bold ${item.color}`}>
-                {item.value}
-              </div>
+          <div key={index} className="glass-effect rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-2">
+              {item.icon}
+              <span className="text-sm text-gray-400">{item.label}</span>
             </div>
-          </motion.div>
+            <div className={`text-lg font-bold ${item.color}`}>
+              {item.value}
+            </div>
+          </div>
         ))}
       </div>
 
       {/* Detailed stats */}
       <div className="glass-effect rounded-2xl p-4 mb-6">
         <h3 className="font-bold mb-4">Статистика</h3>
-        <div className="space-y-3">
-          {[
-            { label: 'Открыто кейсов', value: stats.totalCasesOpened || 0 },
-            { label: 'Собрано скинов', value: stats.totalSkinsCollected || 0 },
-            { label: 'Приглашено друзей', value: stats.totalReferrals || 0 },
-            { label: 'Точность трейдов', value: `${stats.tradeAccuracy || 0}%` },
-          ].map((stat, index) => (
-            <div key={index} className="flex justify-between items-center">
-              <span className="text-gray-400">{stat.label}</span>
-              <span className="font-bold">{stat.value}</span>
-            </div>
-          ))}
-        </div>
+        {loadingStats ? (
+          <div className="text-center py-4">
+            <div className="inline-block w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-400 mt-2">Загрузка статистики...</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {[
+              { label: 'Открыто кейсов', value: stats.totalCasesOpened || 0 },
+              { label: 'Собрано скинов', value: stats.totalSkinsCollected || 0 },
+              { label: 'Приглашено друзей', value: stats.totalReferrals || 0 },
+              { label: 'Точность трейдов', value: `${stats.tradeAccuracy || 0}%` },
+            ].map((stat, index) => (
+              <div key={index} className="flex justify-between items-center">
+                <span className="text-gray-400">{stat.label}</span>
+                <span className="font-bold">{stat.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Actions */}
       <div className="space-y-3">
         {actions.map((action, index) => (
-          <motion.div
-            key={index}
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: index * 0.1 }}
-          >
+          <div key={index}>
             <Button
-              variant={action.variant || 'glass'}
+              variant={action.label === 'Выйти' ? 'danger' : 'glass'}
               fullWidth
               className="justify-start h-14"
               icon={action.icon}
@@ -155,7 +146,7 @@ export const ProfilePage: React.FC = () => {
             >
               {action.label}
             </Button>
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>

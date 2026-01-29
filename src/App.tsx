@@ -8,25 +8,35 @@ import { MarketPage } from './pages/MarketPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { initTelegram } from './services/telegram';
 import { useUserStore } from './store/user.store';
+import { checkApiConnection } from './services/api';
 
 function App() {
-  const { isAuthenticated, setUser, setToken } = useUserStore();
+  const { isAuthenticated } = useUserStore();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
   useEffect(() => {
     const initApp = async () => {
       try {
-        const user = await initTelegram();
+        console.log('🚀 Инициализация приложения...');
+        
+        // Проверяем подключение к API
+        const apiCheck = await checkApiConnection();
+        if (apiCheck.success) {
+          setApiStatus('connected');
+          console.log('✅ Подключение к API успешно');
+        } else {
+          setApiStatus('error');
+          console.warn('⚠️  API недоступен, работаем в офлайн режиме');
+        }
+        
+        // Инициализируем пользователя
+        await initTelegram();
         console.log('✅ Приложение инициализировано');
         
-        // Для тестирования, если нужно принудительно установить токен
-        if (user && !useUserStore.getState().token) {
-          setToken('test-token');
-        }
       } catch (error: any) {
         console.error('❌ Ошибка инициализации:', error);
-        setError(error.message || 'Ошибка загрузки приложения');
+        setApiStatus('error');
       } finally {
         setLoading(false);
       }
@@ -41,23 +51,33 @@ function App() {
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-300">Загрузка приложения...</p>
-          <p className="text-sm text-gray-500 mt-2">Подключение к серверу...</p>
+          {apiStatus === 'checking' && (
+            <p className="text-sm text-gray-500 mt-2">Проверка подключения к серверу...</p>
+          )}
         </div>
       </div>
     );
   }
 
-  if (error && !isAuthenticated) {
+  if (apiStatus === 'error') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-400 mb-4">Ошибка</h1>
-          <p className="text-gray-300 mb-6">{error}</p>
+        <div className="text-center max-w-md">
+          <div className="text-2xl font-bold text-yellow-400 mb-4">⚠️ Режим офлайн</div>
+          <p className="text-gray-300 mb-6">
+            Сервер временно недоступен. Вы можете использовать приложение в демо-режиме.
+          </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-3"
           >
-            Перезагрузить
+            Попробовать снова
+          </button>
+          <button
+            onClick={() => setLoading(false)}
+            className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+          >
+            Продолжить офлайн
           </button>
         </div>
       </div>
@@ -65,7 +85,7 @@ function App() {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
       <div className="pb-16">
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -77,7 +97,7 @@ function App() {
         </Routes>
       </div>
       <Navigation />
-    </>
+    </div>
   );
 }
 

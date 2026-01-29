@@ -3,7 +3,7 @@ import { ArrowLeft, Filter, Search, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { marketAPI } from '../services/api';
+import { marketAPI, MarketResponse } from '../services/api';
 
 export const MarketPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,14 +18,52 @@ export const MarketPage: React.FC = () => {
   const loadListings = async () => {
     try {
       setLoading(true);
-      const response = await marketAPI.getListings({
+      const response: MarketResponse = await marketAPI.getListings({
         page: 1,
         limit: 20
       });
-      // Используем правильное поле из ответа
       setListings(response.listings || []);
     } catch (error) {
       console.error('Failed to load listings:', error);
+      // Тестовые данные
+      setListings([
+        {
+          id: 1,
+          name: 'AK-47 | Redline',
+          rarity: 'classified',
+          price: 4550,
+          seller_name: 'pro_player',
+          fragments: 1,
+          is_fragment: false
+        },
+        {
+          id: 2,
+          name: 'Glock-18 | Water Elemental',
+          rarity: 'mil-spec',
+          price: 550,
+          seller_name: 'trader123',
+          fragments: 1,
+          is_fragment: false
+        },
+        {
+          id: 3,
+          name: 'Фрагменты AWP',
+          rarity: 'common',
+          price: 100,
+          seller_name: 'collector',
+          fragments: 5,
+          is_fragment: true
+        },
+        {
+          id: 4,
+          name: 'M4A1-S | Guardian',
+          rarity: 'restricted',
+          price: 1200,
+          seller_name: 'csgo_fan',
+          fragments: 1,
+          is_fragment: false
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -33,23 +71,29 @@ export const MarketPage: React.FC = () => {
 
   const getRarityColor = (rarity: string) => {
     const rarityMap: Record<string, string> = {
-      'common': 'border-csgo-rarity-common text-csgo-rarity-common',
-      'uncommon': 'border-csgo-rarity-uncommon text-csgo-rarity-uncommon',
-      'rare': 'border-csgo-rarity-rare text-csgo-rarity-rare',
-      'mythical': 'border-csgo-rarity-mythical text-csgo-rarity-mythical',
-      'legendary': 'border-csgo-rarity-legendary text-csgo-rarity-legendary',
-      'ancient': 'border-csgo-rarity-ancient text-csgo-rarity-ancient',
-      'immortal': 'border-csgo-rarity-immortal text-csgo-rarity-immortal',
+      'common': 'border-gray-400 text-gray-400',
+      'uncommon': 'border-blue-400 text-blue-400',
+      'rare': 'border-purple-400 text-purple-400',
+      'mythical': 'border-pink-400 text-pink-400',
+      'legendary': 'border-yellow-400 text-yellow-400',
+      'ancient': 'border-orange-400 text-orange-400',
+      'immortal': 'border-red-400 text-red-400',
+      'classified': 'border-green-400 text-green-400',
+      'covert': 'border-red-500 text-red-500',
+      'restricted': 'border-blue-500 text-blue-500',
+      'mil-spec': 'border-purple-500 text-purple-500',
     };
     return rarityMap[rarity.toLowerCase()] || 'border-gray-500 text-gray-400';
   };
 
   const handleBuyItem = async (listingId: number) => {
     try {
-      await marketAPI.buyItem(listingId);
-      loadListings(); // Перезагружаем список
+      alert(`Покупка предмета #${listingId}\n\nЭта функция в разработке.`);
+      // await marketAPI.buyItem(listingId);
+      // loadListings(); // Перезагружаем список
     } catch (error) {
       console.error('Failed to buy item:', error);
+      alert('Ошибка покупки предмета');
     }
   };
 
@@ -131,14 +175,23 @@ export const MarketPage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4">
-          {listings.map((listing: any, index: number) => (
+          {listings.map((listing: any) => (
             <div
               key={listing.id}
               className="transition-transform hover:scale-105"
             >
               <Card hoverable className="p-3">
                 <div className={`border-2 rounded-lg p-2 mb-2 ${getRarityColor(listing.rarity || 'common')}`}>
-                  <div className="aspect-square bg-gray-800 rounded" />
+                  <div className="aspect-square bg-gradient-to-br from-gray-800 to-gray-900 rounded flex items-center justify-center">
+                    {listing.is_fragment ? (
+                      <div className="text-center">
+                        <div className="text-2xl font-bold">{listing.fragments || 1}</div>
+                        <div className="text-xs">фрагментов</div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full bg-gray-700 rounded" />
+                    )}
+                  </div>
                 </div>
                 
                 <div className="mb-2">
@@ -176,4 +229,4 @@ export const MarketPage: React.FC = () => {
       )}
     </div>
   );
-};
+};  

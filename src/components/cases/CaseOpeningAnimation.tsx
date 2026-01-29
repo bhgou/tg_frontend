@@ -11,7 +11,6 @@ interface CaseOpeningProps {
 export const CaseOpeningAnimation: React.FC<CaseOpeningProps> = ({
   isOpen,
   onComplete,
-  caseType
 }) => {
   const [phase, setPhase] = useState<'idle' | 'opening' | 'reveal' | 'complete'>('idle');
   const [reward, setReward] = useState<any>(null);

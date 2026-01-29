@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Package, ShoppingBag, User, Settings } from 'lucide-react';
+import { Home, Package, ShoppingBag, User} from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export const Navigation: React.FC = () => {
