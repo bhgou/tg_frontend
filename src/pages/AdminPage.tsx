@@ -8,124 +8,15 @@ import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useUserStore } from '../store/user.store';
-import { adminAPI, AdminStatsResponse, AdminUsersResponse } from '../services/api';
+import { adminAPI, AdminStatsResponse } from '../services/api'; // У
 
 const AdminPage: React.FC = () => {
   const { user } = useUserStore();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [stats, setStats] = useState<any>({});
-  const [loading, setLoading] = useState(true);
-  
-  // Проверка прав администратора
-  useEffect(() => {
-    if (!user?.isAdmin) {
-      window.location.href = '/';
-      return;
-    }
-    loadStats();
-  }, []);
-
-  const loadStats = async () => {
-    try {
-      setLoading(true);
-      const response = await adminAPI.getStats();
-      setStats(response.stats || {});
-    } catch (error) {
-      console.error('Failed to load admin stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const tabs = [
-    { id: 'dashboard', label: 'Дашборд', icon: <BarChart3 className="w-4 h-4" /> },
-    { id: 'users', label: 'Пользователи', icon: <Users className="w-4 h-4" /> },
-    { id: 'payments', label: 'Платежи', icon: <CreditCard className="w-4 h-4" /> },
-    { id: 'cases', label: 'Кейсы', icon: <Package className="w-4 h-4" /> },
-    { id: 'sponsors', label: 'Спонсоры', icon: <Award className="w-4 h-4" /> },
-    { id: 'withdrawals', label: 'Выводы', icon: <DollarSign className="w-4 h-4" /> },
-    { id: 'games', label: 'Игры', icon: <Gamepad2 className="w-4 h-4" /> },
-    { id: 'settings', label: 'Настройки', icon: <Settings className="w-4 h-4" /> },
-  ];
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardContent stats={stats} />;
-      case 'users':
-        return <UsersContent />;
-      case 'payments':
-        return <PaymentsContent />;
-      case 'cases':
-        return <CasesContent />;
-      case 'sponsors':
-        return <SponsorsContent />;
-      case 'withdrawals':
-        return <WithdrawalsContent />;
-      case 'games':
-        return <GamesContent />;
-      case 'settings':
-        return <SettingsContent />;
-      default:
-        return null;
-    }
-  };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-64 bg-gray-800 border-r border-gray-700 p-4">
-        <div className="mb-8">
-          <h1 className="text-xl font-bold text-blue-400">Админ-панель</h1>
-          <p className="text-sm text-gray-400">Skin Factory</p>
-        </div>
-        
-        <div className="space-y-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-            <Shield className="w-5 h-5 text-green-400" />
-            <div>
-              <div className="font-medium">{user?.username}</div>
-              <div className="text-xs text-gray-400">Администратор</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="ml-64 p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold capitalize">
-            {tabs.find(t => t.id === activeTab)?.label}
-          </h2>
-          <div className="flex gap-2">
-            <Button variant="glass" icon={<Download className="w-4 h-4" />}>
-              Экспорт
-            </Button>
-            <Button variant="primary" onClick={loadStats} loading={loading}>
-              Обновить
-            </Button>
-          </div>
-        </div>
-
-        {renderContent()}
-      </div>
+    <div>
+      {/* ваш JSX */}
     </div>
   );
 };
@@ -264,7 +155,7 @@ const UsersContent: React.FC = () => {
   const loadUsers = async () => {
     try {
       const response = await adminAPI.getUsers({ search });
-      setUsers(response.users || []);
+      setUsers(response.data?.users || []);  // Изменено с response.users на response.data?.users
     } catch (error) {
       console.error('Failed to load users:', error);
     }

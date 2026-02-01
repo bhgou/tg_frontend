@@ -6,13 +6,15 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    host: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_URL,
+        changeOrigin: true,
+      }
+    }
   },
   build: {
     outDir: 'dist',
     sourcemap: true,
-  },
-  define: {
-    'process.env': {}
   }
 })

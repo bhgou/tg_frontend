@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useUserStore } from '../store/user.store';
-import { caseAPI, CaseDropsResponse, OpenCaseResponse, CasesResponse } from '../services/api';
+import { caseAPI, OpenCaseResponse, CasesResponse, ApiResponse } from '../services/api'; 
 
 const CaseDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,10 +18,9 @@ const CaseDetailPage: React.FC = () => {
   const [selectedDrop, setSelectedDrop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     loadCaseData();
   }, [id]);
-
   const loadCaseData = async () => {
     try {
       setLoading(true);
@@ -30,13 +29,13 @@ const CaseDetailPage: React.FC = () => {
         caseAPI.getCaseDrops(Number(id))
       ]);
       
-      // Типизируем ответы
       const casesResponse = caseResponse as CasesResponse;
-      const dropsData = dropsResponse as CaseDropsResponse;
-      
       const foundCase = casesResponse.cases?.find((c: any) => c.id === Number(id));
       setCaseData(foundCase);
-      setDrops(dropsData.drops || []);
+      
+      // Исправляем получение дропов
+      const dropsData = dropsResponse as ApiResponse;
+      setDrops(dropsData.data?.drops || []);  // Получаем drops из data
     } catch (error) {
       console.error('Failed to load case data:', error);
     } finally {
@@ -62,7 +61,7 @@ const CaseDetailPage: React.FC = () => {
       setIsOpening(true);
       
       // Отправляем запрос на открытие кейса
-      const response = await caseAPI.openCase(Number(id)) as OpenCaseResponse;
+      const response = await caseAPI.openCase(Number(id)) as ApiResponse;
       
       if (response.success) {
         // Обновляем баланс
@@ -74,17 +73,38 @@ const CaseDetailPage: React.FC = () => {
         }
         
         // Добавляем выигрыш
-        if (response.item?.is_fragment) {
+        const item = response.data?.item; // ✅ Правильно
+        if (item?.isFragment) { // Используем isFragment вместо is_fragment
           // Для фрагментов просто показываем
-          setResult(response);
+          setResult({
+            success: true,
+            item,
+            case: caseData || {
+              id: 0,
+              name: '',
+              type: 'standard',
+              price: 0,
+              premiumPrice: 0,
+              imageUrl: '',
+              description: '',
+              minReward: 0,
+              maxReward: 0,
+              isActive: false,
+              coolDownMinutes: 0,
+              totalOpened: 0,
+              createdAt: ''
+            },
+            newBalance: 0,    // Добавлено
+            message: ''       // Добавлено
+          });
         } else {
           // Для скинов показываем анимацию
-          await showOpeningAnimation(response.item);
+          await showOpeningAnimation(item);
         }
         
         // Обновляем баланс из ответа сервера
-        if (response.newBalance !== undefined) {
-          addBalance(response.newBalance - balance);
+        if (response.data?.newBalance !== undefined) {
+          addBalance(response.data.newBalance - balance);
         }
       }
     } catch (error) {
@@ -95,8 +115,10 @@ const CaseDetailPage: React.FC = () => {
     }
   };
 
+
   const showOpeningAnimation = async (item: any) => {
-    // Анимация выбора случайного дропа
+    if (!item) return;
+    
     const dropsCount = drops.length;
     let currentIndex = 0;
     
@@ -113,10 +135,24 @@ const CaseDetailPage: React.FC = () => {
     setResult({ 
       success: true, 
       item, 
-      message: `Вы получили: ${item.name}`,
-      case: { id: caseData?.id || 0, name: caseData?.name || '', type: caseData?.type || '' },
-      newBalance: balance
-    } as OpenCaseResponse);
+      case: caseData || {
+        id: 0,
+        name: '',
+        type: 'standard',
+        price: 0,
+        premiumPrice: 0,
+        imageUrl: '',
+        description: '',
+        minReward: 0,
+        maxReward: 0,
+        isActive: false,
+        coolDownMinutes: 0,
+        totalOpened: 0,
+        createdAt: ''
+      },
+      newBalance: 0,    // Добавлено
+      message: ''       // Добавлено
+    });
     
     // Через 3 секунды сбрасываем
     setTimeout(() => {
@@ -138,6 +174,14 @@ const CaseDetailPage: React.FC = () => {
     };
     return colors[rarity.toLowerCase()] || 'text-gray-400 border-gray-400';
   };
+
+  // В рендере исправляем строку где используется is_fragment
+  {selectedDrop && selectedDrop.isFragment && ( // Используем isFragment вместо is_fragment
+    <div className="text-center">
+      <div className="text-2xl font-bold">{selectedDrop.fragments}</div>
+      <div className="text-xs">фрагментов</div>
+    </div>
+  )}
 
   if (loading) {
     return (
@@ -272,7 +316,7 @@ const CaseDetailPage: React.FC = () => {
                             <div className="text-xs">фраг.</div>
                           </div>
                         ) : (
-                          <div className="w-10 h-10 bg-gray-700 rounded" />
+                          <div className="w-12 h-12 bg-gray-700 rounded" />
                         )}
                       </div>
                       <div className="flex-1">
@@ -384,7 +428,7 @@ const CaseDetailPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg border-2 border-yellow-500 flex items-center justify-center">
-                    {result.item?.is_fragment ? (
+                    {result.item?.isFragment ? (
                       <div className="text-center">
                         <div className="text-2xl font-bold">{result.item.fragments}</div>
                         <div className="text-xs">фрагментов</div>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Navigation } from './components/layout/Navigation';
 import { HomePage } from './pages/HomePage';
 import { CasesPage } from './pages/CasesPage';
@@ -12,72 +12,77 @@ import { checkApiConnection } from './services/api';
 import AdminPage from './pages/AdminPage';
 import PaymentPage from './pages/PaymentPage';
 import GamesPage from './pages/GamesPage';
+import GameMatchPage from './pages/GameMatchPage';
 import CaseDetailPage from './pages/CaseDetailPage';
 import SponsorsPage from './pages/SponsorsPage';
 import WithdrawalPage from './pages/WithdrawalPage';
 import RealSkinsPage from './pages/RealSkinsPage';
-
-// В роутах добавьте:
+import SellItemPage from './pages/SellItemPage';
+import ReferralPage from './pages/ReferralPage';
+import LeaderboardPage from './pages/LeaderboardPage';
+import SupportPage from './pages/SupportPage';
+import AuthPage from './pages/AuthPage';
+import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { LoadingScreen } from './components/layout/LoadingScreen';
+import { ErrorBoundary } from './components/layout/ErrorBoundary';
 
 function App() {
-  const { isAuthenticated } = useUserStore();
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, isLoading, error, initUser } = useUserStore();
   const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'error'>('checking');
+  const location = useLocation();
 
   useEffect(() => {
-    const initApp = async () => {
+    const initializeApp = async () => {
       try {
         console.log('🚀 Инициализация приложения...');
-         setApiStatus('connected');
-
-        // Инициализируем пользователя
-        await initTelegram();
+        
+        // 1. Проверяем подключение к API
+        const apiCheck = await checkApiConnection();
+        if (!apiCheck.success) {
+          setApiStatus('error');
+          throw new Error('Не удалось подключиться к серверу');
+        }
+        
+        setApiStatus('connected');
+        
+        // 2. Инициализируем Telegram или аутентификацию
+        const userData = await initTelegram();
+        
+        // 3. Загружаем данные пользователя
+        if (userData) {
+          await initUser(userData);
+        }
+        
         console.log('✅ Приложение инициализировано');
         
       } catch (error: any) {
         console.error('❌ Ошибка инициализации:', error);
-        setApiStatus('error');
-      } finally {
-        setLoading(false);
+        useUserStore.getState().setError(error.message);
       }
     };
     
-    initApp();
+    initializeApp();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-300">Загрузка приложения...</p>
-          {apiStatus === 'checking' && (
-            <p className="text-sm text-gray-500 mt-2">Проверка подключения к серверу...</p>
-          )}
-        </div>
-      </div>
-    );
+  // Показываем загрузку
+  if (isLoading) {
+    return <LoadingScreen message="Загрузка приложения..." />;
   }
 
+  // Показываем ошибку API
   if (apiStatus === 'error') {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="text-2xl font-bold text-yellow-400 mb-4">⚠️ Режим офлайн</div>
+          <div className="text-2xl font-bold text-yellow-400 mb-4">⚠️ Ошибка подключения</div>
           <p className="text-gray-300 mb-6">
-            Сервер временно недоступен. Вы можете использовать приложение в демо-режиме.
+            Не удалось подключиться к серверу. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-3"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            Попробовать снова
-          </button>
-          <button
-            onClick={() => setLoading(false)}
-            className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
-          >
-            Продолжить офлайн
+            Обновить страницу
           </button>
         </div>
       </div>
@@ -85,28 +90,52 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      <div className="pb-16">
-        <Routes>
-<Route path="/" element={<HomePage />} />
-          <Route path="/cases" element={<CasesPage />} />
-          <Route path="/cases/:id" element={<CaseDetailPage />} />
-          <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/market" element={<MarketPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/payment" element={<PaymentPage />} />
-          <Route path="/payment/:packageId" element={<PaymentPage />} />
-          <Route path="/games" element={<GamesPage />} />
-          <Route path="/games/:gameType" element={<GamesPage />} />
-          <Route path="/sponsors" element={<SponsorsPage />} />
-          <Route path="/withdraw" element={<WithdrawalPage />} />
-          <Route path="/real-skins" element={<RealSkinsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+        <div className="pb-16">
+          <Routes>
+            {/* Публичные маршруты */}
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/cases" element={<CasesPage />} />
+            <Route path="/cases/:id" element={<CaseDetailPage />} />
+            <Route path="/market" element={<MarketPage />} />
+            <Route path="/games" element={<GamesPage />} />
+            <Route path="/sponsors" element={<SponsorsPage />} />
+            <Route path="/leaderboard" element={<LeaderboardPage />} />
+            
+            {/* Защищенные маршруты */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/game/match/:id" element={<GameMatchPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/payment" element={<PaymentPage />} />
+              <Route path="/payment/:packageId" element={<PaymentPage />} />
+              <Route path="/withdraw" element={<WithdrawalPage />} />
+              <Route path="/real-skins" element={<RealSkinsPage />} />
+              <Route path="/sell-item" element={<SellItemPage />} />
+              <Route path="/referrals" element={<ReferralPage />} />
+              <Route path="/support" element={<SupportPage />} />
+            </Route>
+            
+            {/* Админ маршрут (доступ только по whitelist) */}
+            <Route 
+              path="/admin" 
+              element={
+                isAuthenticated && useUserStore.getState().user?.isAdmin ? 
+                <AdminPage /> : 
+                <Navigate to="/" replace />
+              } 
+            />
+            
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+        
+        {/* Показываем навигацию только на основных страницах */}
+        {!location.pathname.includes('/game/match/') && <Navigation />}
       </div>
-      <Navigation />
-    </div>
+    </ErrorBoundary>
   );
 }
 

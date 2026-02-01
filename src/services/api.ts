@@ -1,133 +1,297 @@
 import axios from 'axios';
 import { useUserStore } from '../store/user.store';
 
-const API_URL = 'https://backend-tg-i7mg.onrender.com/api';
+const API_URL = process.env.REACT_APP_API_URL || 'https://api.skinfactory.com/api';
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000,
 });
 
-// Интерфейсы для ответов API
+// ==================== TYPES ====================
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
   error?: string;
   message?: string;
-  pagination?: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  pagination?: Pagination;
 }
 
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+// User Types
+export interface User {
+  id: number;
+  telegramId: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string;
+  balance: number;
+  premiumBalance: number;
+  totalEarned: number;
+  totalSpentRub: number;
+  dailyStreak: number;
+  referralCode: string;
+  isAdmin: boolean;
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+  stats?: UserStats;
+}
+
+export interface UserStats {
+  totalCasesOpened: number;
+  totalSkinsCollected: number;
+  totalReferrals: number;
+  tradeAccuracy: number;
+  totalGamesPlayed: number;
+  totalGamesWon: number;
+  winRate: number;
+}
+
+// Auth Responses
 export interface AuthResponse extends ApiResponse {
   token: string;
-  user: any;
+  user: User;
 }
 
 export interface UserProfileResponse extends ApiResponse {
-  user: any;
+  user: User;
 }
 
 export interface UserStatsResponse extends ApiResponse {
-  stats: any;
+  stats: UserStats;
+}
+
+// Case Types
+export interface Case {
+  id: number;
+  name: string;
+  type: 'free' | 'standard' | 'premium' | 'fragment' | 'gold';
+  price: number | null;
+  premiumPrice: number | null;
+  imageUrl: string | null;
+  description: string;
+  minReward: number;
+  maxReward: number;
+  isActive: boolean;
+  coolDownMinutes: number;
+  totalOpened: number;
+  createdAt: string;
+}
+
+export interface CaseDrop {
+  id: number;
+  caseId: number;
+  skinId: number | null;
+  name: string;
+  rarity: string;
+  probability: number;
+  isFragment: boolean;
+  fragments: number;
+  price: number;
+  imageUrl: string | null;
 }
 
 export interface CasesResponse extends ApiResponse {
-  cases: any[];
+  cases: Case[];
 }
 
-export interface DailyRewardResponse extends ApiResponse {
-  reward: number;
-  newBalance: number;
-  streak: number;
-  nextAvailable: string;
-}
-
-export interface InventoryResponse extends ApiResponse {
-  items: any[];
-  total: number;
-}
-
-export interface MarketResponse extends ApiResponse {
-  listings: any[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
-}
-
-export interface CaseDropsResponse extends ApiResponse {
-  drops: any[];
+export interface CaseDetailResponse extends ApiResponse {
+  case: Case;
+  drops: CaseDrop[];
+  canOpen: boolean;
+  nextAvailable: string | null;
 }
 
 export interface OpenCaseResponse extends ApiResponse {
-  item: {
-    id: number;
-    name: string;
-    rarity: string;
-    price: number;
-    is_fragment: boolean;
-    fragments?: number;
-    image_url?: string;
-  };
-  case: {
-    id: number;
-    name: string;
-    type: string;
-  };
+  item: InventoryItem;
+  case: Case;
   newBalance: number;
   message: string;
 }
 
-export interface AdminStatsResponse extends ApiResponse {
-  stats: any;
-  revenueChart?: any[];
-  topSpenders?: any[];
+// Inventory Types
+export interface InventoryItem {
+  id: number;
+  userId: number;
+  skinId: number | null;
+  name: string;
+  rarity: string;
+  imageUrl: string | null;
+  isFragment: boolean;
+  fragments: number;
+  price: number;
+  createdAt: string;
+  weapon?: string;
+  fragmentsRequired?: number;
+  isTradable: boolean;
+  isMarketable: boolean;
 }
 
-export interface AdminUsersResponse extends ApiResponse {
-  users: any[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+export interface InventoryResponse extends ApiResponse {
+  items: InventoryItem[];
+  total: number;
 }
 
-export interface PackagesResponse extends ApiResponse {
-  packages: any[];
+// Market Types
+export interface MarketListing {
+  id: number;
+  sellerId: number;
+  sellerUsername: string;
+  itemId: number;
+  item: InventoryItem;
+  price: number;
+  isActive: boolean;
+  createdAt: string;
+  expiresAt: string;
+  views: number;
+}
+
+export interface MarketResponse extends ApiResponse {
+  listings: MarketListing[];
+  pagination: Pagination;
+  stats: MarketStats;
+}
+
+export interface MarketStats {
+  totalListings: number;
+  totalTrades: number;
+  totalVolume: number;
+  averagePrice: number;
+}
+
+// Game Types
+export interface Game {
+  id: number;
+  name: string;
+  type: 'dice' | 'roulette' | 'slots' | 'coinflip' | 'blackjack';
+  minBet: number;
+  maxBet: number;
+  winMultiplier: number;
+  isActive: boolean;
+  playersOnline: number;
+  description: string;
+}
+
+export interface GameMatch {
+  id: number;
+  gameId: number;
+  gameName: string;
+  bet: number;
+  player1Id: number;
+  player1Username: string;
+  player2Id: number | null;
+  player2Username: string | null;
+  status: 'waiting' | 'playing' | 'finished' | 'cancelled';
+  result: any;
+  winnerId: number | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
 }
 
 export interface GamesResponse extends ApiResponse {
-  games: any[];
+  games: Game[];
+}
+
+export interface GameMatchResponse extends ApiResponse {
+  match: GameMatch;
+  queueId?: string;
+}
+
+// Payment Types
+export interface PaymentPackage {
+  id: number;
+  rub: number;
+  premium: number;
+  bonus: number;
+  popular: boolean;
+  description: string;
+}
+
+export interface PackagesResponse extends ApiResponse {
+  packages: PaymentPackage[];
 }
 
 export interface PaymentCreateResponse extends ApiResponse {
-  payment: any;
+  payment?: {
+    id: number;
+    userId: number;
+    amountRub: number;
+    amountPremium: number;
+    status: string;
+    paymentUrl: string; // camelCase
+    payment_url?: string; // snake_case (опционально для обратной совместимости)
+    createdAt: string;
+  };
   demo?: boolean;
-  payment_url?: string;
-  gateway_data?: any;
 }
 
-// Интерцептор для добавления токена
+// Real Skin Types
+export interface RealSkin {
+  id: number;
+  name: string;
+  weapon: string;
+  rarity: string;
+  exterior: string;
+  floatValue: number;
+  steamPrice: number;
+  imageUrl: string;
+  fragmentsRequired: number;
+  premiumFee: number;
+  isTradable: boolean;
+  isStattrak: boolean;
+  isSouvenir: boolean;
+  totalWithdrawn: number;
+}
+
+// Admin Types
+export interface AdminStatsResponse extends ApiResponse {
+  stats: {
+    totalUsers: number;
+    newUsersToday: number;
+    totalRevenue: number;
+    totalPayments: number;
+    totalBalance: number;
+    totalPremiumBalance: number;
+    transactionsToday: number;
+    totalCaseOpens: number;
+    gamesToday: number;
+    pendingWithdrawals: number;
+    completedWithdrawals: number;
+  };
+  revenueChart: any[];
+  topSpenders: any[];
+}
+
+// ==================== INTERCEPTORS ====================
 api.interceptors.request.use((config) => {
   const token = useUserStore.getState().token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Добавляем timestamp для предотвращения кеширования
+  if (config.method === 'get') {
+    config.params = {
+      ...config.params,
+      _t: Date.now()
+    };
+  }
+  
   return config;
 });
 
-// Интерцептор для обработки ответов
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
@@ -139,171 +303,251 @@ api.interceptors.response.use(
     
     if (error.response?.status === 401) {
       useUserStore.getState().logout();
+      window.location.href = '/auth';
     }
     
-    return Promise.reject(error.response?.data || { error: 'Ошибка сети' });
+    if (error.response?.status === 429) {
+      alert('Слишком много запросов. Подождите немного.');
+    }
+    
+    return Promise.reject(error.response?.data || { 
+      success: false, 
+      error: 'Ошибка сети. Проверьте подключение к интернету.' 
+    });
   }
 );
 
-// Проверка подключения к API
+// ==================== API METHODS ====================
+
+// Проверка подключения
 export const checkApiConnection = async () => {
   try {
-    const response = await api.get('/');
+    const response = await api.get('/health');
     return { success: true, data: response };
   } catch (error) {
-    console.error('API connection error:', error);
     return { success: false, error };
   }
 };
 
-// API для аутентификации
+// Auth API
 export const authAPI = {
   login: (data: any): Promise<AuthResponse> => 
-    api.post('/auth/login', data) as Promise<AuthResponse>,
+    api.post('/auth/login', data),
   
   verify: (token: string): Promise<AuthResponse> => 
-    api.post('/auth/verify', { token }) as Promise<AuthResponse>,
+    api.post('/auth/verify', { token }),
+  
+  register: (data: any): Promise<AuthResponse> =>
+    api.post('/auth/register', data),
+  
+  logout: (): Promise<ApiResponse> =>
+    api.post('/auth/logout'),
 };
 
-// API для пользователя
+// User API
 export const userAPI = {
-  getProfile: (): Promise<UserProfileResponse> => 
-    api.get('/user/profile') as Promise<UserProfileResponse>,
+  getProfile: (): Promise<UserProfileResponse> =>
+    api.get('/user/profile'),
   
-  getStats: (): Promise<UserStatsResponse> => 
-    api.get('/user/stats') as Promise<UserStatsResponse>,
+  getStats: (): Promise<UserStatsResponse> =>
+    api.get('/user/stats'),
   
-  claimDaily: (): Promise<DailyRewardResponse> => 
-    api.post('/user/daily') as Promise<DailyRewardResponse>,
+  claimDaily: (): Promise<ApiResponse> =>
+    api.post('/user/daily'),
   
-  getReferrals: (): Promise<ApiResponse> => 
-    api.get('/user/referrals') as Promise<ApiResponse>,
+  getReferrals: (): Promise<ApiResponse> =>
+    api.get('/user/referrals'),
   
-  getTransactions: (params?: any): Promise<ApiResponse> => 
-    api.get('/user/transactions', { params }) as Promise<ApiResponse>,
+  getTransactions: (params?: any): Promise<ApiResponse> =>
+    api.get('/user/transactions', { params }),
+  
+  updateProfile: (data: any): Promise<UserProfileResponse> =>
+    api.put('/user/profile', data),
 };
 
-// API для кейсов
+// Case API
 export const caseAPI = {
-  getCases: (): Promise<CasesResponse> => 
-    api.get('/cases') as Promise<CasesResponse>,
+  getCases: (): Promise<CasesResponse> =>
+    api.get('/cases'),
   
-  getCaseDrops: (caseId: number): Promise<CaseDropsResponse> => 
-    api.get(`/cases/${caseId}/drops`) as Promise<CaseDropsResponse>,
+  getCase: (id: number): Promise<CaseDetailResponse> =>
+    api.get(`/cases/${id}`),
   
-  openCase: (caseId: number): Promise<OpenCaseResponse> => 
-    api.post('/cases/open', { caseId }) as Promise<OpenCaseResponse>,
+  getCaseDrops: (caseId: number): Promise<ApiResponse> =>
+    api.get(`/cases/${caseId}/drops`),
   
-  getCaseHistory: (): Promise<ApiResponse> => 
-    api.get('/cases/history') as Promise<ApiResponse>,
+  openCase: (caseId: number): Promise<OpenCaseResponse> =>
+    api.post('/cases/open', { caseId }),
+  
+  checkCanOpen: (caseId: number): Promise<ApiResponse> =>
+    api.get(`/cases/${caseId}/can-open`),
+  
+  getCaseHistory: (params?: any): Promise<ApiResponse> =>
+    api.get('/cases/history', { params }),
 };
 
-// API для инвентаря
+// Inventory API
 export const inventoryAPI = {
-  getInventory: (params?: any): Promise<InventoryResponse> => 
-    api.get('/inventory', { params }) as Promise<InventoryResponse>,
+  getInventory: (params?: any): Promise<InventoryResponse> =>
+    api.get('/inventory', { params }),
   
-  combineSkin: (skinId: number): Promise<ApiResponse> => 
-    api.post('/inventory/combine', { skinId }) as Promise<ApiResponse>,
+  combineSkin: (skinId: number): Promise<ApiResponse> =>
+    api.post('/inventory/combine', { skinId }),
   
-  sellItem: (itemId: number, price: number): Promise<ApiResponse> => 
-    api.post('/inventory/sell', { itemId, price }) as Promise<ApiResponse>,
-  
-  cancelSale: (listingId: number): Promise<ApiResponse> => 
-    api.post('/inventory/cancel-sale', { listingId }) as Promise<ApiResponse>,
+  getItem: (itemId: number): Promise<ApiResponse> =>
+    api.get(`/inventory/${itemId}`),
 };
 
-// API для рынка
+// Market API
 export const marketAPI = {
-  getListings: (params?: any): Promise<MarketResponse> => 
-    api.get('/market', { params }) as Promise<MarketResponse>,
+  getListings: (params?: any): Promise<MarketResponse> =>
+    api.get('/market', { params }),
   
-  buyItem: (listingId: number): Promise<ApiResponse> => 
-    api.post('/market/buy', { listingId }) as Promise<ApiResponse>,
+  createListing: (data: any): Promise<ApiResponse> =>
+    api.post('/market/listings', data),
   
-  getMarketHistory: (params?: any): Promise<ApiResponse> => 
-    api.get('/market/history', { params }) as Promise<ApiResponse>,
+  buyItem: (listingId: number): Promise<ApiResponse> =>
+    api.post('/market/buy', { listingId }),
+  
+  cancelListing: (listingId: number): Promise<ApiResponse> =>
+    api.delete(`/market/listings/${listingId}`),
+  
+  getMarketHistory: (params?: any): Promise<ApiResponse> =>
+    api.get('/market/history', { params }),
+  
+  searchItems: (params: any): Promise<MarketResponse> =>
+    api.get('/market/search', { params }),
 };
 
-// API для админ-панели
-export const adminAPI = {
-  getStats: (): Promise<AdminStatsResponse> => 
-    api.get('/admin/stats') as Promise<AdminStatsResponse>,
-  
-  getUsers: (params?: any): Promise<AdminUsersResponse> => 
-    api.get('/admin/users', { params }) as Promise<AdminUsersResponse>,
-  
-  updateUserBalance: (userId: number, data: any): Promise<ApiResponse> => 
-    api.post(`/admin/users/${userId}/balance`, data) as Promise<ApiResponse>,
-  
-  getCases: (): Promise<ApiResponse> => 
-    api.get('/admin/cases') as Promise<ApiResponse>,
-  
-  saveCase: (data: any): Promise<ApiResponse> => 
-    api.post('/admin/cases', data) as Promise<ApiResponse>,
-  
-  getSkins: (params?: any): Promise<ApiResponse> => 
-    api.get('/admin/skins', { params }) as Promise<ApiResponse>,
-  
-  getSponsors: (): Promise<ApiResponse> => 
-    api.get('/admin/sponsors') as Promise<ApiResponse>,
-  
-  saveSponsor: (data: any): Promise<ApiResponse> => 
-    api.post('/admin/sponsors', data) as Promise<ApiResponse>,
-  
-  getWithdrawals: (params?: any): Promise<ApiResponse> => 
-    api.get('/admin/withdrawals', { params }) as Promise<ApiResponse>,
-  
-  updateWithdrawalStatus: (id: number, data: any): Promise<ApiResponse> => 
-    api.post(`/admin/withdrawals/${id}/status`, data) as Promise<ApiResponse>,
-  
-  getSettings: (): Promise<ApiResponse> => 
-    api.get('/admin/settings') as Promise<ApiResponse>,
-  
-  saveSettings: (settings: any[]): Promise<ApiResponse> => 
-    api.post('/admin/settings', { settings }) as Promise<ApiResponse>,
-  
-  getPayments: (params?: any): Promise<ApiResponse> => 
-    api.get('/admin/payments', { params }) as Promise<ApiResponse>,
-  
-  exportData: (type: string, params?: any): Promise<ApiResponse> => 
-    api.get(`/admin/export/${type}`, { params }) as Promise<ApiResponse>,
-};
-
-// API для платежей
-export const paymentAPI = {
-  getPackages: (): Promise<PackagesResponse> => 
-    api.get('/payments/packages') as Promise<PackagesResponse>,
-  
-  createPayment: (data: any): Promise<PaymentCreateResponse> => 
-    api.post('/payments/create', data) as Promise<PaymentCreateResponse>,
-  
-  getPaymentStatus: (paymentId: string): Promise<ApiResponse> => 
-    api.get(`/payments/status/${paymentId}`) as Promise<ApiResponse>,
-  
-  getPaymentHistory: (params?: any): Promise<ApiResponse> => 
-    api.get('/payments/history', { params }) as Promise<ApiResponse>,
-};
-
-// API для мини-игр
+// Game API
 export const gameAPI = {
-  getGames: (): Promise<GamesResponse> => 
-    api.get('/games/games') as Promise<GamesResponse>,
+  getGames: (): Promise<GamesResponse> =>
+    api.get('/games'),
   
-  playDice: (data: any): Promise<ApiResponse> => 
-    api.post('/games/dice/play', data) as Promise<ApiResponse>,
+  searchMatch: (data: any): Promise<GameMatchResponse> =>
+    api.post('/games/search-match', data),
   
-  playRoulette: (data: any): Promise<ApiResponse> => 
-    api.post('/games/roulette/play', data) as Promise<ApiResponse>,
+  checkMatch: (queueId: string): Promise<GameMatchResponse> =>
+    api.get(`/games/check-match/${queueId}`),
   
-  playSlots: (data: any): Promise<ApiResponse> => 
-    api.post('/games/slots/play', data) as Promise<ApiResponse>,
+  getMatches: (gameId: number): Promise<ApiResponse> =>
+    api.get(`/games/matches/${gameId}`),
   
-  playCoinflip: (data: any): Promise<ApiResponse> => 
-    api.post('/games/coinflip/play', data) as Promise<ApiResponse>,
+  getMyMatches: (): Promise<ApiResponse> =>
+    api.get('/games/my-matches'),
   
-  getGameHistory: (params?: any): Promise<ApiResponse> => 
-    api.get('/games/history', { params }) as Promise<ApiResponse>,
+  joinMatch: (matchId: number): Promise<ApiResponse> =>
+    api.post('/games/join-match', { matchId }),
+  
+  makeMove: (matchId: number, move: any): Promise<ApiResponse> =>
+    api.post('/games/make-move', { matchId, move }),
+  
+  getMatch: (matchId: number): Promise<ApiResponse> =>
+    api.get(`/games/match/${matchId}`),
+  
+  getGameHistory: (params?: any): Promise<ApiResponse> =>
+    api.get('/games/history', { params }),
 };
 
+// Payment API
+export const paymentAPI = {
+  getPackages: (): Promise<PackagesResponse> =>
+    api.get('/payments/packages'),
+  
+  createPayment: (data: any): Promise<PaymentCreateResponse> =>
+    api.post('/payments/create', data),
+  
+  getPaymentStatus: (paymentId: string): Promise<ApiResponse> =>
+    api.get(`/payments/status/${paymentId}`),
+  
+  getPaymentHistory: (params?: any): Promise<ApiResponse> =>
+    api.get('/payments/history', { params }),
+};
+
+// Admin API (только для админов)
+export const adminAPI = {
+  getStats: (): Promise<AdminStatsResponse> =>
+    api.get('/admin/stats'),
+  
+  getUsers: (params?: any): Promise<ApiResponse<{users: User[], pagination?: Pagination}>> =>
+    api.get('/admin/users', { params }),
+  
+  updateUser: (userId: number, data: any): Promise<ApiResponse> =>
+    api.put(`/admin/users/${userId}`, data),
+  
+  banUser: (userId: number, reason: string): Promise<ApiResponse> =>
+    api.post(`/admin/users/${userId}/ban`, { reason }),
+  
+  getCases: (): Promise<ApiResponse> =>
+    api.get('/admin/cases'),
+  
+  createCase: (data: any): Promise<ApiResponse> =>
+    api.post('/admin/cases', data),
+  
+  updateCase: (caseId: number, data: any): Promise<ApiResponse> =>
+    api.put(`/admin/cases/${caseId}`, data),
+  
+  getWithdrawals: (params?: any): Promise<ApiResponse> =>
+    api.get('/admin/withdrawals', { params }),
+  
+  updateWithdrawal: (id: number, data: any): Promise<ApiResponse> =>
+    api.put(`/admin/withdrawals/${id}`, data),
+  
+  getAuditLog: (params?: any): Promise<ApiResponse> =>
+    api.get('/admin/audit-log', { params }),
+};
+
+// Rate limiting
+class RateLimiter {
+  private requests: Map<string, { count: number; timestamp: number }> = new Map();
+  
+  canMakeRequest(key: string, limit: number, windowMs: number): boolean {
+    const now = Date.now();
+    const entry = this.requests.get(key);
+    
+    if (!entry || now - entry.timestamp > windowMs) {
+      this.requests.set(key, { count: 1, timestamp: now });
+      return true;
+    }
+    
+    if (entry.count >= limit) {
+      return false;
+    }
+    
+    entry.count++;
+    return true;
+  }
+}
+
+const rateLimiter = new RateLimiter();
+
+// Обновленный interceptor
+api.interceptors.request.use((config) => {
+  const token = useUserStore.getState().token;
+  const userId = useUserStore.getState().user?.id;
+  
+  // Rate limiting по пользователю или IP
+  const key = userId ? `user_${userId}` : `ip_${window.location.hostname}`;
+  
+  if (!rateLimiter.canMakeRequest(key, 60, 60000)) { // 60 запросов в минуту
+    throw new Error('Слишком много запросов. Подождите 1 минуту.');
+  }
+  
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+    config.headers['X-User-ID'] = userId;
+  }
+  
+  // Добавляем уникальный идентификатор запроса
+  config.headers['X-Request-ID'] = crypto.randomUUID();
+  
+  // Добавляем timestamp для предотвращения replay attacks
+  if (config.method === 'post' || config.method === 'put' || config.method === 'delete') {
+    config.headers['X-Timestamp'] = Date.now();
+  }
+  
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 export default api;

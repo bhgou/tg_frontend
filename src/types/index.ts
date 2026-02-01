@@ -18,7 +18,15 @@ export interface User {
   created_at: string;
   updated_at: string;
 }
-
+export interface UserStats {
+  totalCasesOpened: number;
+  totalSkinsCollected: number;
+  totalReferrals: number;
+  tradeAccuracy: number;
+  totalGamesPlayed: number;
+  totalGamesWon: number;
+  winRate: number;
+}
 // Типы для скинов
 export interface Skin {
   id: number;

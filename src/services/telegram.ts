@@ -1,61 +1,33 @@
 import { useUserStore } from '../store/user.store';
-import { authAPI } from './api';
-
-// Полный интерфейс для Telegram WebApp
-interface TelegramWebApp {
-  ready: () => void;
-  expand: () => void;
-  enableClosingConfirmation: () => void;
-  MainButton?: {
-    show: () => void;
-    hide: () => void;
-    setText: (text: string) => void;
-    onClick: (callback: () => void) => void;
-  };
-  showPopup?: (params: any, callback?: (buttonId: string) => void) => void;
-  sendData?: (data: string) => void;
-  close?: () => void;
-  showAlert?: (message: string, callback?: () => void) => void;
-  initDataUnsafe?: {
-    user?: {
-      id: number;
-      username?: string;
-      first_name?: string;
-      last_name?: string;
-      photo_url?: string;
-    };
-    start_param?: string;
-  };
-  colorScheme?: 'light' | 'dark';
-  platform?: string;
-  version?: string;
-}
+import { authAPI, userAPI } from './api';
+import { jwtDecode } from 'jwt-decode'; // Изменено с import jwt_decode from 'jwt-decode'
 
 declare global {
   interface Window {
     Telegram?: {
-      WebApp: TelegramWebApp;
+      WebApp: any;
     };
   }
 }
 
-export const initTelegram = async () => {
-  // Если в окружении Telegram WebApp
-  if (window.Telegram?.WebApp) {
-    const tg = window.Telegram.WebApp;
-    
-    try {
-      console.log('📱 Режим Telegram Mini App');
+export interface TelegramUser {
+  id: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  photo_url?: string;
+}
+
+// Whitelist для админ панели (добавьте свои Telegram ID)
+const ADMIN_WHITELIST = [process.env.ID_TELEGRAM]; // Замените на реальные ID
+
+export const initTelegram = async (): Promise<any> => {
+  try {
+    // Если в окружении Telegram WebApp
+    if (window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
       
-      if (tg.platform) {
-        console.log('Platform:', tg.platform);
-      }
-      if (tg.version) {
-        console.log('Version:', tg.version);
-      }
-      if (tg.colorScheme) {
-        console.log('Theme:', tg.colorScheme);
-      }
+      console.log('📱 Режим Telegram Mini App');
       
       tg.ready();
       tg.expand();
@@ -64,103 +36,97 @@ export const initTelegram = async () => {
         tg.enableClosingConfirmation();
       }
       
-      // Показываем главную кнопку
-      if (tg.MainButton) {
-        tg.MainButton.show();
-        tg.MainButton.setText('Открыть меню');
-        tg.MainButton.onClick(() => {
-          if (tg.showPopup) {
-            tg.showPopup({
-              title: 'Меню',
-              message: 'Выберите действие',
-              buttons: [
-                { id: 'profile', text: '👤 Профиль', type: 'default' },
-                { id: 'inventory', text: '🎒 Инвентарь', type: 'default' },
-                { type: 'cancel' }
-              ]
-            }, (buttonId: string) => {
-              if (buttonId === 'profile') {
-                window.location.href = '/profile';
-              } else if (buttonId === 'inventory') {
-                window.location.href = '/inventory';
-              }
-            });
-          }
-        });
-      }
-      
       // Получаем данные пользователя
       const user = tg.initDataUnsafe?.user;
+      const initData = tg.initData;
       
-      if (user) {
+      if (user && initData) {
         console.log('👤 Telegram пользователь:', user);
         
-        const userData = {
+        // Исправляем тип для ответа сервера
+        const response = await authAPI.login({
           telegramId: user.id.toString(),
           username: user.username,
           firstName: user.first_name,
           lastName: user.last_name,
           photoUrl: user.photo_url,
+          initData: initData,
           startParam: tg.initDataUnsafe?.start_param
-        };
+        });
         
-        try {
-          const response = await authAPI.login(userData);
-          if (response.success) {
-            useUserStore.getState().setUser(response.user);
-            useUserStore.getState().setToken(response.token);
-            console.log('✅ Авторизация через Telegram успешна');
-            
-            // Отправляем данные в бот
-            if (tg.sendData) {
-              tg.sendData(JSON.stringify({
-                type: 'user_connected',
-                userId: response.user.id
-              }));
-            }
-            
-            return response.user;
-          }
-        } catch (error) {
-          console.error('Ошибка авторизации:', error);
-          return createFallbackUser();
+        if (response.success && response.token) {
+          // Используем нашу функцию декодирования
+          const decoded = jwtDecode(response.token);
+          
+          const userData = {
+            ...response.user,
+            telegramId: response.user.telegramId,
+            firstName: response.user.firstName,
+            lastName: response.user.lastName,
+            avatarUrl: response.user.avatarUrl,
+            isAdmin: response.user.isAdmin || false
+          };
+          
+          useUserStore.getState().setUser(userData);
+          useUserStore.getState().setToken(response.token);
+          
+          console.log('✅ Аутентификация через Telegram успешна');
+          
+          return userData;
         }
       }
-    } catch (error) {
-      console.error('Ошибка инициализации Telegram:', error);
-      return createFallbackUser();
     }
+    
+    // Проверяем localStorage токен
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const response = await authAPI.verify(token);
+        if (response.success) {
+          const userData = {
+            ...response.user,
+            telegramId: response.user.telegramId,
+            firstName: response.user.firstName,
+            lastName: response.user.lastName,
+            avatarUrl: response.user.avatarUrl,
+            isAdmin: response.user.isAdmin || false
+          };
+          
+          useUserStore.getState().setUser(userData);
+          useUserStore.getState().setToken(token);
+          return userData;
+        }
+      } catch (error) {
+        console.log('Токен невалиден, требуется новая аутентификация');
+      }
+    }
+    
+    throw new Error('Требуется аутентификация');
+    
+  } catch (error) {
+    console.error('Ошибка инициализации:', error);
+    useUserStore.getState().setError('Требуется аутентификация');
+    return null;
   }
-  
-  // Режим тестирования в браузере
-  return createFallbackUser();
 };
 
-// В функции createFallbackUser исправьте:
-const createFallbackUser = () => {
-  console.log('💻 Режим тестирования в браузере');
-  
-  const fallbackUser = {
-    id: 1,
-    telegramId: '123456789',
-    username: 'testuser',
-    firstName: 'Тест',
-    lastName: 'Пользователь',
-    avatarUrl: null,
-    balance: 5000,
-    premiumBalance: 1000, // Добавили
-    totalEarned: 10000,
-    totalSpentRub: 0, // Добавили
-    dailyStreak: 5,
-    referralCode: 'test123',
-    isAdmin: false, // Добавили
-    createdAt: new Date().toISOString()
-  };
-  
-  useUserStore.getState().setUser(fallbackUser);
-  useUserStore.getState().setToken('test-token-browser');
-  
-  return fallbackUser;
+// Загружаем дополнительные данные пользователя
+const loadUserData = async () => {
+  try {
+    const [profile, stats] = await Promise.all([
+      userAPI.getProfile(),
+      userAPI.getStats()
+    ]);
+    
+    if (profile.success && stats.success) {
+      useUserStore.getState().updateUserData({
+        ...profile.user,
+        stats: stats.stats
+      });
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки данных пользователя:', error);
+  }
 };
 
 export const useTelegram = () => {
@@ -171,7 +137,6 @@ export const useTelegram = () => {
       try {
         tg.showAlert(message);
       } catch (error) {
-        console.warn('showAlert не поддерживается, используем alert');
         alert(message);
       }
     } else {

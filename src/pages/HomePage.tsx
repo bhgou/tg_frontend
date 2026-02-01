@@ -33,7 +33,19 @@ export const HomePage: React.FC = () => {
       ]);
       
       if (casesResponse.success) {
-        setCases(casesResponse.cases || []);
+        // Фильтруем только нужные типы кейсов для главной страницы
+        const filteredCases = (casesResponse.cases || []).filter((caseItem: any) => 
+          ['ad', 'standard', 'premium'].includes(caseItem.type)
+        ).map((caseItem: any) => ({
+          id: caseItem.id,
+          name: caseItem.name,
+          type: caseItem.type as 'ad' | 'standard' | 'premium',
+          price: caseItem.price,
+          imageUrl: caseItem.imageUrl,
+          description: caseItem.description
+        }));
+        
+        setCases(filteredCases);
       }
       
       if (packagesResponse.success) {
@@ -45,6 +57,46 @@ export const HomePage: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to load data:', error);
+      // Демо данные для тестирования
+      setCases([
+        {
+          id: 1,
+          name: 'Бесплатный кейс',
+          type: 'ad' as const,
+          price: null,
+          imageUrl: null,
+          description: 'Смотрите рекламу и получайте награды'
+        },
+        {
+          id: 2,
+          name: 'Стандартный кейс',
+          type: 'standard' as const,
+          price: 100,
+          imageUrl: null,
+          description: 'Обычные скины и фрагменты'
+        },
+        {
+          id: 3,
+          name: 'Премиум кейс',
+          type: 'premium' as const,
+          price: 500,
+          imageUrl: null,
+          description: 'Редкие и легендарные скины'
+        }
+      ]);
+      
+      setPremiumPackages([
+        { id: 1, rub: 99, premium: 1000, bonus: 100, popular: true },
+        { id: 2, rub: 299, premium: 3500, bonus: 500, popular: false },
+        { id: 3, rub: 599, premium: 7500, bonus: 1500, popular: true },
+      ]);
+      
+      setGames([
+        { id: 1, name: 'Кости', type: 'dice', min_bet: 10, max_bet: 1000, win_multiplier: 2.0 },
+        { id: 2, name: 'Рулетка', type: 'roulette', min_bet: 50, max_bet: 5000, win_multiplier: 36.0 },
+        { id: 3, name: 'Слоты', type: 'slots', min_bet: 20, max_bet: 2000, win_multiplier: 10.0 },
+        { id: 4, name: 'Орёл/Решка', type: 'coinflip', min_bet: 10, max_bet: 1000, win_multiplier: 1.95 },
+      ]);
     }
   };
 
@@ -53,7 +105,23 @@ export const HomePage: React.FC = () => {
   };
 
   const handlePlayGame = (gameType: string) => {
-    navigate(`/games/${gameType}`);
+    navigate(`/games?type=${gameType}`);
+  };
+
+  // Измени сигнатуру функции
+  const handleCaseSelect = (selectedCase: any) => { // Или CaseItem, если CasesGrid передает CaseItem
+    console.log('Выбран кейс:', selectedCase);
+    // Если тебе нужен только ID:
+    const caseId = selectedCase.id; // Предполагая, что id - это number
+    // Делай что-то с caseId или со всем selectedCase
+    // Например, перенаправить на страницу кейса:
+    // navigate(`/cases/${caseId}`);
+  };
+
+  const handleClaimDailyReward = (reward: number) => {
+    alert(`🎉 Получено ${reward} CR!`);
+    // Обновляем баланс через store
+    useUserStore.getState().addBalance(reward);
   };
 
   return (
@@ -115,7 +183,7 @@ export const HomePage: React.FC = () => {
       </div>
 
       {/* Ежедневная награда */}
-      <DailyReward />
+      <DailyReward onClaim={handleClaimDailyReward} />
 
       {/* Популярные игры */}
       <div className="mb-6">
@@ -156,7 +224,7 @@ export const HomePage: React.FC = () => {
         
         <CasesGrid 
           cases={cases.slice(0, 4)} 
-          onSelectCase={(caseItem) => navigate(`/cases/${caseItem.id}`)}
+          onSelectCase={handleCaseSelect}
         />
       </div>
 

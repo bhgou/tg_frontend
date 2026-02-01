@@ -4,7 +4,7 @@ import { ArrowLeft, CreditCard, Shield, Check, Gift } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useUserStore } from '../store/user.store';
-import { paymentAPI } from '../services/api';
+import { paymentAPI, PaymentCreateResponse } from '../services/api';
 
 const PaymentPage: React.FC = () => {
   const { packageId } = useParams<{ packageId: string }>();
@@ -57,7 +57,7 @@ const PaymentPage: React.FC = () => {
       const response = await paymentAPI.createPayment({
         package_id: selectedPackage.id,
         payment_method: 'demo' // В демо режиме
-      });
+      }) as PaymentCreateResponse; // Используем существующий тип
       
       if (response.success) {
         // В демо режиме сразу зачисляем
@@ -69,10 +69,16 @@ const PaymentPage: React.FC = () => {
           setTimeout(() => {
             navigate('/');
           }, 3000);
-        } else {
+        } else if (response.payment?.paymentUrl) {
           // В реальном режиме перенаправляем на страницу оплаты
-          window.location.href = response.payment_url;
+          // Используем paymentUrl (верблюжий регистр)
+          window.location.href = response.payment.paymentUrl;
+        } else if (response.payment?.payment_url) {
+          // Если сервер возвращает snake_case, также обрабатываем
+          window.location.href = response.payment.payment_url;
         }
+      } else {
+        setPaymentStatus('error');
       }
     } catch (error) {
       console.error('Payment error:', error);
