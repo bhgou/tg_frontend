@@ -75,15 +75,7 @@ function App() {
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="text-2xl font-bold text-yellow-400 mb-4">⚠️ Ошибка подключения</div>
-          <p className="text-gray-300 mb-6">
-            Не удалось подключиться к серверу. Пожалуйста, проверьте ваше интернет-соединение и попробуйте снова.
-          </p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Обновить страницу
-          </button>
+          
         </div>
       </div>
     );
