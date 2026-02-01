@@ -69,18 +69,6 @@ function App() {
     return <LoadingScreen message="Загрузка приложения..." />;
   }
 
-  // Показываем ошибку API
-  if (apiStatus === 'error') {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="text-2xl font-bold text-yellow-400 mb-4">⚠️ Ошибка подключения</div>
-          
-        </div>
-      </div>
-    );
-  }
-
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
